@@ -21,7 +21,7 @@ The Free Textbook Library has been successfully migrated from Google Sheets/Form
 2. **`js/inventory.js`** - Now fetches from Firestore
 3. **`catalog.html`** - Now submits requests to Firestore
 4. **`admin.html`** - Complete overhaul with Firebase Auth + book management UI
-5. **`data/content.json`** - Deprecated Google integrations
+5. **HTML pages** - Page copy now lives directly in semantic HTML
 6. **`firebase.json`** - Added Firestore rules configuration
 
 ## What You Need to Do Next

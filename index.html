@@ -8,7 +8,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&amp;family=Inter+Tight:wght@400;500;600&amp;display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="css/reset.css" />
   <link rel="stylesheet" href="css/variables.css" />
@@ -16,23 +16,49 @@
   <link rel="stylesheet" href="css/pages/home.css" />
 </head>
 <body>
-  <nav class="site-nav" data-nav></nav>
+  <nav class="site-nav" aria-label="Primary navigation">
+    <div class="container site-nav__inner">
+      <a href="index.html" class="site-nav__brand">Free Textbook Library</a>
+      <ul class="site-nav__links">
+        <li><a href="index.html" class="active" aria-current="page">Home</a></li>
+        <li><a href="catalog.html">Browse Catalog</a></li>
+        <li><a href="#about">About</a></li>
+        <li><a href="admin.html">Admin</a></li>
+      </ul>
+    </div>
+  </nav>
 
   <main>
     <!-- HERO -->
     <section class="hero">
       <div class="hero__ribbon"></div>
       <div class="container">
-        <div class="eyebrow" data-hero-eyebrow></div>
+        <div class="eyebrow">Free · For Students · By Students</div>
         <div class="hero__grid">
-          <h1 class="hero__headline" data-hero-headline></h1>
+          <h1 class="hero__headline">A library for <em>every</em> student who needs a textbook.</h1>
           <div>
-            <p class="hero__lead" data-hero-lead></p>
-            <div class="hero__ctas" data-hero-ctas></div>
+            <p class="hero__lead">Borrow, keep, or return — no fees, no fines, no questions. Browse the shelf, request a book, pick it up on campus.</p>
+            <div class="hero__ctas">
+              <a class="btn btn--primary" href="catalog.html">Browse the catalog</a>
+              <a class="btn btn--ghost" href="#how">How it works</a>
+            </div>
           </div>
         </div>
 
-        <div class="stats" data-stats></div>
+        <div class="stats">
+          <div class="stat">
+            <div class="stat__number" data-stat-books>—</div>
+            <div class="stat__label">Books on the shelf</div>
+          </div>
+          <div class="stat">
+            <div class="stat__number" data-stat-subjects>—</div>
+            <div class="stat__label">Subjects covered</div>
+          </div>
+          <div class="stat">
+            <div class="stat__number">$0</div>
+            <div class="stat__label">Cost to students</div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -40,95 +66,104 @@
     <section id="how" class="how">
       <div class="container">
         <div class="how__header">
-          <h2 class="how__title" data-how-title></h2>
-          <p class="how__intro" data-how-intro></p>
+          <h2 class="how__title">How the library works</h2>
+          <p class="how__intro">No library card, no waitlist, no late fees. The whole point is friction-free access to the textbooks you need for the semester.</p>
         </div>
-        <div class="steps" data-steps></div>
+        <div class="steps">
+          <div class="step">
+            <div class="step__number"></div>
+            <h3 class="step__title">Search the catalog</h3>
+            <p class="step__desc">Filter by subject, title, author, or ISBN. If we have it, you'll see it listed as available.</p>
+          </div>
+          <div class="step">
+            <div class="step__number"></div>
+            <h3 class="step__title">Request a book</h3>
+            <p class="step__desc">Tap request, tell us who you are and how to reach you. A volunteer will email you within 48 hours.</p>
+          </div>
+          <div class="step">
+            <div class="step__number"></div>
+            <h3 class="step__title">Pick it up</h3>
+            <p class="step__desc">Drop by the library during open hours. Take the book, use it for as long as you need, return it when you're done — or don't. It's yours.</p>
+          </div>
+        </div>
       </div>
     </section>
 
     <!-- ABOUT -->
     <section id="about" class="about-section">
       <div class="container about-section__inner">
-        <h2 class="about-section__title" data-about-title></h2>
-        <div class="about-section__body" data-about-body></div>
+        <h2 class="about-section__title">About the library</h2>
+        <div class="about-section__body">
+          <p>The Free Textbook Library started as a simple idea — students shouldn't have to choose between eating and buying a $300 biology textbook. We take donated books from graduating students, faculty, and community members, log them, and put them back into circulation.</p>
+          <p>Everything is volunteer-run. Every book is free. We don't track who has what or when it comes back. The only rule: when you're done, pass it on — either back to us or to another student who needs it.</p>
+          <p>If you have books to donate or want to volunteer with inventory, maintenance, or outreach, reach out through the contact links below.</p>
+        </div>
       </div>
     </section>
 
     <!-- SUBJECTS -->
     <section class="subjects-strip">
       <div class="container">
-        <h2 data-subjects-title></h2>
+        <h2>Browse by subject</h2>
         <div class="subjects-grid" data-subjects-grid>
           <div class="empty-state">Loading subjects…</div>
         </div>
 
         <!-- CTA BANNER -->
-        <div class="cta-banner" data-cta-banner></div>
+        <div class="cta-banner">
+          <div>
+            <h2>Need a textbook?</h2>
+            <p>The catalog is updated weekly by volunteers. Most requests are fulfilled within 48 hours.</p>
+          </div>
+          <a href="catalog.html" class="btn btn--accent">Browse catalog →</a>
+        </div>
       </div>
     </section>
   </main>
 
-  <footer class="site-footer" data-footer></footer>
+  <footer class="site-footer">
+    <div class="container">
+      <div class="site-footer__grid">
+        <div>
+          <div class="site-footer__brand">Free Textbook Library</div>
+          <p class="site-footer__tagline">A volunteer-run lending library for College of Charleston students. Free access, no fees, no questions.</p>
+        </div>
+        <div class="site-footer__col">
+          <h4>Navigate</h4>
+          <ul>
+            <li><a href="index.html">Home</a></li>
+            <li><a href="catalog.html">Catalog</a></li>
+            <li><a href="admin.html">Admin</a></li>
+          </ul>
+        </div>
+        <div class="site-footer__col">
+          <h4>Get involved</h4>
+          <ul>
+            <li><a href="mailto:freetextbooklibrary@cofc.edu?subject=Book%20Donation">Donate books</a></li>
+            <li><a href="mailto:freetextbooklibrary@cofc.edu?subject=Volunteer">Volunteer</a></li>
+            <li><a href="mailto:freetextbooklibrary@cofc.edu">Contact</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="site-footer__legal">
+        <span>© 2026 Free Textbook Library at the College of Charleston. A student-run initiative.</span>
+        <span>Stern Student Center, College of Charleston · Mon–Fri · 10am–4pm</span>
+      </div>
+    </div>
+  </footer>
 
   <script type="module">
-    import { loadContent, renderNav, renderFooter, CONTENT } from './js/main.js';
     import { fetchInventory, groupBySubject } from './js/inventory.js';
 
     (async () => {
-      const content = await loadContent();
-      renderNav('index.html');
-      renderFooter();
-
-      // HERO
-      document.querySelector('[data-hero-eyebrow]').textContent = content.hero.eyebrow;
-      document.querySelector('[data-hero-headline]').innerHTML = content.hero.headline;
-      document.querySelector('[data-hero-lead]').textContent = content.hero.lead;
-      document.querySelector('[data-hero-ctas]').innerHTML = `
-        <a class="btn btn--primary" href="${content.hero.ctaPrimary.href}">${content.hero.ctaPrimary.label}</a>
-        <a class="btn btn--ghost" href="${content.hero.ctaSecondary.href}">${content.hero.ctaSecondary.label}</a>
-      `;
-
-      // HOW
-      document.querySelector('[data-how-title]').textContent = content.how.title;
-      document.querySelector('[data-how-intro]').textContent = content.how.intro;
-      document.querySelector('[data-steps]').innerHTML = content.how.steps.map(s => `
-        <div class="step">
-          <div class="step__number"></div>
-          <h3 class="step__title">${s.title}</h3>
-          <p class="step__desc">${s.desc}</p>
-        </div>
-      `).join('');
-
-      // ABOUT
-      document.querySelector('[data-about-title]').textContent = content.about.title;
-      document.querySelector('[data-about-body]').innerHTML = content.about.paragraphs.map(p => `<p>${p}</p>`).join('');
-
-      // SUBJECTS TITLE
-      document.querySelector('[data-subjects-title]').textContent = content.subjectsIntro;
-
-      // CTA BANNER
-      document.querySelector('[data-cta-banner]').innerHTML = `
-        <div>
-          <h2>${content.ctaBanner.headline}</h2>
-          <p>${content.ctaBanner.lead}</p>
-        </div>
-        <a href="${content.ctaBanner.cta.href}" class="btn btn--accent">${content.ctaBanner.cta.label}</a>
-      `;
-
       // Fetch inventory for stats + subject grid
       const books = await fetchInventory();
       const subjectMap = groupBySubject(books);
       const availableBooks = books.filter(b => b.status === 'Available');
 
       // STATS
-      const statsHTML = content.stats.map(s => {
-        let value = s.value;
-        if (s.key === 'totalBooks') value = availableBooks.length;
-        if (s.key === 'totalSubjects') value = Object.keys(subjectMap).length;
-        return `<div class="stat"><div class="stat__number">${value}</div><div class="stat__label">${s.label}</div></div>`;
-      }).join('');
-      document.querySelector('[data-stats]').innerHTML = statsHTML;
+      document.querySelector('[data-stat-books]').textContent = availableBooks.length;
+      document.querySelector('[data-stat-subjects]').textContent = Object.keys(subjectMap).length;
 
       // SUBJECTS GRID
       const subjectsHTML = Object.entries(subjectMap)

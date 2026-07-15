@@ -8,10 +8,14 @@ A lightweight, volunteer-friendly inventory management site for the College of C
 
 ## Architecture
 
-Google Sheet (source of truth) → Published as CSV → Fetched by `inventory.js` → Rendered into catalog table
-Google Form (request submission) → Responses sheet → Email to library email
+This is a no-build vanilla HTML, CSS, and JavaScript site backed by Firebase:
 
-No backend, no build step, no database. All logic runs in the browser. State lives in the Google Sheet.
+- Page copy and semantic structure live directly in each HTML file.
+- Shared design tokens and components live in `css/`.
+- Browser behavior and Firebase integration live in `js/`.
+- Firestore stores the live catalog and student requests.
+- Firebase Authentication protects the admin dashboard.
+- `data/seed-inventory.json` provides a local fallback catalog.
 
 ## File structure
 
@@ -35,26 +39,25 @@ free-textbook-library/
 │       └── admin.css
 │
 ├── js/
-│   ├── main.js             Shared init: content.json loader, nav, footer, toast
-│   ├── inventory.js        Google Sheet CSV fetcher, filter/sort helpers
-│   └── firebase-config.js  Optional Firebase scaffold (commented out)
+│   ├── main.js             Shared UI helpers
+│   ├── inventory.js        Firestore inventory fetch/filter/sort helpers
+│   └── firebase-config.js  Firebase client configuration
 │
 ├── data/
-│   ├── content.json        ALL editable text + integration URLs
-│   └── seed-inventory.json Fallback inventory (142 books, pre-loaded)
+│   └── seed-inventory.json Fallback inventory (pre-loaded)
 │
 └── assets/images/          (empty — drop in logo, photos, etc.)
 ```
 
 ## Key architectural decisions
 
-**Content as data.** Every editable string on every page is pulled from `data/content.json`. HTML files contain `[data-*]` hooks that get populated at runtime. Volunteers can change headlines, stats, contact info, and integration URLs without touching markup.
+**Content in HTML.** Each page's copy, navigation, and footer are written directly in its HTML file. The site remains readable before JavaScript loads, and content edits do not require tracing data through a separate JSON layer.
 
-**CSV fetch fallback pattern.** `inventory.js` tries to fetch the published Google Sheet CSV first. If that URL isn't configured yet — or if the fetch fails — it falls back to `seed-inventory.json`. This means the site works out of the box with the 142-book seed data, and gracefully upgrades to live sheet data once configured.
+**Firestore with a local fallback.** `inventory.js` reads the live `books` collection from Firestore. If Firebase is unavailable, it falls back to `seed-inventory.json`, so the public catalog can still render.
 
-**No-CORS Google Form submission.** Google Forms doesn't allow CORS on the submission endpoint, so we use `fetch(url, { mode: 'no-cors' })`. We can't read the response, but the submission succeeds. If the form isn't configured, the request modal falls back to a `mailto:` link.
+**Requests in Firestore.** The catalog writes student requests to the `requests` collection. If Firebase is unavailable, it falls back to a pre-filled email.
 
-**Password "auth" on admin page.** Intentionally simple — the password is plaintext in `content.json`, which is publicly served. This is fine for a student-run library where the goal is friction-reduction, not hardening against attackers. For real auth, swap in Firebase Auth (see `js/firebase-config.js` for the scaffold).
+**Firebase admin authentication.** The admin form signs in through Firebase Authentication, then verifies the user's matching Firestore admin document before showing the dashboard.
 
 ## Design tokens
 
@@ -95,16 +98,18 @@ Full setup instructions for non-developers are in `SETUP_GUIDE.md`.
 
 **Add a new page:**
 1. Create `newpage.html`, copy the `<nav>` and `<footer>` scaffolding from `index.html`
-2. Add a link in `data/content.json` → `nav[]`
+2. Add the new navigation link to the HTML pages where it should appear
 3. Create `css/pages/newpage.css` for page-specific styles
 
 **Add a new field to inventory (e.g. author):**
-1. Add `Author` column to the Google Sheet
-2. `inventory.js` already auto-detects an author column — just expose it in the catalog table by editing `catalog.html`'s `renderTable()` function
+1. Add the field to book documents in Firestore and the admin book form
+2. Normalize the field in `js/inventory.js`
+3. Expose it in the catalog table by editing `catalog.html`'s `renderTable()` function
 
-**Switch from shared password to real auth:**
-1. Uncomment `js/firebase-config.js` and fill in your Firebase config
-2. Replace the password check in `admin.html` with `signInWithEmailAndPassword`
+**Edit site copy:**
+1. Open the HTML file for the page you want to change
+2. Edit the text directly in the relevant semantic element
+3. Keep behavior in JavaScript and presentation in CSS
 
 ## License
 

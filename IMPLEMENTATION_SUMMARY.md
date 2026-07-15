@@ -101,15 +101,13 @@ This document summarizes all changes made to implement the Firebase migration fo
 - Real-time request monitoring
 - No need to access Firestore Console for book management
 
-### 5. `data/content.json`
+### 5. HTML page content
 **Changes:**
-- Set all `integrations` URLs to empty strings
-- Added deprecation comment explaining Firebase migration
-- Set `admin.password` to empty string
-- Set all admin Google URLs to empty strings
-- Kept JSON structure for backward compatibility
+- Moved page copy, navigation, and footer markup into the HTML files
+- Removed the obsolete external content-data layer
+- Kept live inventory values and interactions in JavaScript
 
-**Impact:** Cleanly deprecated old Google Sheets/Forms integration
+**Impact:** Pages now contain their own semantic content and render without a content-loading request
 
 ### 6. `firebase.json`
 **Changes:**
@@ -260,7 +258,7 @@ If issues arise:
 ### Full Rollback (30 minutes)
 1. `git revert` to pre-migration commit
 2. Deploy: `firebase deploy`
-3. Restore Google Sheets CSV URL in `data/content.json`
+3. Restore the earlier Google Sheets integration from version control
 
 **Note:** Firestore data persists during rollback - no data loss.
 
