@@ -1,0 +1,122 @@
+{
+  "site": {
+    "name": "Free Textbook Library",
+    "tagline": "Textbooks belong to students, not paywalls.",
+    "org": "College of Charleston"
+  },
+
+  "integrations": {
+    "_comment": "DEPRECATED: After Firebase migration, these Google integrations are no longer used. Kept for backward compatibility.",
+    "googleSheetCsvUrl": "",
+    "googleFormUrl": "",
+    "googleFormBookTitleField": "",
+    "googleFormIsbnField": "",
+    "googleFormAuthorField": "",
+    "googleFormCourseField": "",
+    "googleFormFormatField": "",
+    "googleFormNameField": "",
+    "googleFormEmailField": "",
+    "googleFormMessageField": "",
+    "googleFormAvailabilityRatingField": ""
+  },
+
+  "admin": {
+    "_comment": "DEPRECATED: Authentication now handled by Firebase Auth. Admin credentials managed in Firebase Console.",
+    "password": "",
+    "requestsSheetUrl": "",
+    "inventorySheetEditUrl": "",
+    "formEditUrl": ""
+  },
+
+  "nav": [
+    { "label": "Home", "href": "index.html" },
+    { "label": "Browse Catalog", "href": "catalog.html" },
+    { "label": "About", "href": "index.html#about" },
+    { "label": "Admin", "href": "admin.html" }
+  ],
+
+  "hero": {
+    "eyebrow": "Free · For Students · By Students",
+    "headline": "A library for <em>every</em> student who needs a textbook.",
+    "lead": "Borrow, keep, or return — no fees, no fines, no questions. Browse the shelf, request a book, pick it up on campus.",
+    "ctaPrimary": { "label": "Browse the catalog", "href": "catalog.html" },
+    "ctaSecondary": { "label": "How it works", "href": "#how" }
+  },
+
+  "stats": [
+    { "label": "Books on the shelf", "key": "totalBooks" },
+    { "label": "Subjects covered", "key": "totalSubjects" },
+    { "label": "Cost to students", "value": "$0" }
+  ],
+
+  "how": {
+    "title": "How the library works",
+    "intro": "No library card, no waitlist, no late fees. The whole point is friction-free access to the textbooks you need for the semester.",
+    "steps": [
+      {
+        "title": "Search the catalog",
+        "desc": "Filter by subject, title, author, or ISBN. If we have it, you'll see it listed as available."
+      },
+      {
+        "title": "Request a book",
+        "desc": "Tap request, tell us who you are and how to reach you. A volunteer will email you within 48 hours."
+      },
+      {
+        "title": "Pick it up",
+        "desc": "Drop by the library during open hours. Take the book, use it for as long as you need, return it when you're done — or don't. It's yours."
+      }
+    ]
+  },
+
+  "about": {
+    "title": "About the library",
+    "paragraphs": [
+      "The Free Textbook Library started as a simple idea — students shouldn't have to choose between eating and buying a $300 biology textbook. We take donated books from graduating students, faculty, and community members, log them, and put them back into circulation.",
+      "Everything is volunteer-run. Every book is free. We don't track who has what or when it comes back. The only rule: when you're done, pass it on — either back to us or to another student who needs it.",
+      "If you have books to donate or want to volunteer with inventory, maintenance, or outreach, reach out through the contact form below."
+    ]
+  },
+
+  "subjectsIntro": "Browse by subject",
+
+  "ctaBanner": {
+    "headline": "Need a textbook?",
+    "lead": "The catalog is updated weekly by volunteers. Most requests are fulfilled within 48 hours.",
+    "cta": { "label": "Browse catalog →", "href": "catalog.html" }
+  },
+
+  "catalog": {
+    "title": "The Catalog",
+    "lead": "Every book currently on our shelf. Updated weekly by volunteers. Use the filters on the left to narrow by subject or search by title, author, or ISBN.",
+    "emptyMessage": "No books match those filters. Try clearing a filter or broadening your search."
+  },
+
+  "contact": {
+    "email": "freetextbooklibrary@cofc.edu",
+    "location": "Stern Student Center, College of Charleston",
+    "hours": "Mon–Fri · 10am–4pm"
+  },
+
+  "footer": {
+    "tagline": "A volunteer-run lending library for College of Charleston students. Free access, no fees, no questions.",
+    "columns": [
+      {
+        "heading": "Navigate",
+        "links": [
+          { "label": "Home", "href": "index.html" },
+          { "label": "Catalog", "href": "catalog.html" },
+          { "label": "Admin", "href": "admin.html" }
+        ]
+      },
+      {
+        "heading": "Get involved",
+        "links": [
+          { "label": "Donate books", "href": "mailto:freetextbooklibrary@cofc.edu?subject=Book Donation" },
+          { "label": "Volunteer", "href": "mailto:freetextbooklibrary@cofc.edu?subject=Volunteer" },
+          { "label": "Contact", "href": "mailto:freetextbooklibrary@cofc.edu" }
+        ]
+      }
+    ],
+    "legal": "© 2026 Free Textbook Library at the College of Charleston. A student-run initiative."
+  }
+}

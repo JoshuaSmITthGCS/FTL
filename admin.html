@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin · Free Textbook Library</title>
+  <meta name="robots" content="noindex, nofollow" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="css/reset.css" />
+  <link rel="stylesheet" href="css/variables.css" />
+  <link rel="stylesheet" href="css/global.css" />
+  <link rel="stylesheet" href="css/pages/admin.css" />
+</head>
+<body>
+  <nav class="site-nav" data-nav></nav>
+
+  <main>
+    <!-- LOGIN SCREEN -->
+    <section class="login-screen" data-login>
+      <div class="login-card">
+        <div class="eyebrow">Volunteer Access</div>
+        <h1>Admin Login</h1>
+        <p>Enter the admin password to manage the library.</p>
+        <form data-login-form>
+          <input type="password" placeholder="Password" data-login-password autocomplete="current-password" required />
+          <button type="submit" class="btn btn--primary" style="width: 100%; justify-content: center;">Sign in</button>
+          <div class="login-error" data-login-error></div>
+        </form>
+      </div>
+    </section>
+
+    <!-- DASHBOARD (hidden until login) -->
+    <section class="container" data-dashboard style="display: none;">
+      <div class="admin-header">
+        <div>
+          <div class="eyebrow">Volunteer Dashboard</div>
+          <h1>Inventory & Requests</h1>
+        </div>
+        <button class="admin-logout" data-logout>Sign out →</button>
+      </div>
+
+      <!-- STATS -->
+      <div class="admin-grid">
+        <div class="admin-stat">
+          <div class="admin-stat__label">Total Books</div>
+          <div class="admin-stat__value" data-stat-total>—</div>
+        </div>
+        <div class="admin-stat">
+          <div class="admin-stat__label">Available</div>
+          <div class="admin-stat__value" data-stat-available>—</div>
+        </div>
+        <div class="admin-stat">
+          <div class="admin-stat__label">Pending / Checked Out</div>
+          <div class="admin-stat__value" data-stat-out>—</div>
+        </div>
+      </div>
+
+      <!-- QUICK LINKS -->
+      <div class="admin-section">
+        <h2>Firebase tools</h2>
+        <p>The dashboard below syncs directly with <strong>Firestore</strong>. These links open the Firebase Console for advanced maintenance when you need it.</p>
+        <div class="admin-link-grid">
+          <a class="admin-link" target="_blank" rel="noopener" data-link-sheet>
+            <strong>Open Firestore Books →</strong>
+            <span>Inspect the raw `/books` collection in Firebase Console</span>
+          </a>
+          <a class="admin-link" target="_blank" rel="noopener" data-link-form>
+            <strong>Open Auth Users →</strong>
+            <span>Manage the admin login account in Firebase Authentication</span>
+          </a>
+          <a class="admin-link" target="_blank" rel="noopener" data-link-requests>
+            <strong>Open Firestore Requests →</strong>
+            <span>Inspect the live `/requests` collection in Firebase Console</span>
+          </a>
+          <a class="admin-link" href="catalog.html">
+            <strong>View Public Catalog →</strong>
+            <span>See what students see</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- MANAGE BOOKS -->
+      <div class="admin-section">
+        <div class="admin-section__header">
+          <h2>Manage Books</h2>
+          <div class="admin-section__actions">
+            <button
+              type="button"
+              class="btn btn--ghost admin-section__toggle"
+              data-books-toggle
+              aria-expanded="true"
+              aria-controls="manage-books-panel"
+            >
+              Collapse
+            </button>
+            <button class="btn btn--accent" data-add-book-btn>+ Add Book</button>
+          </div>
+        </div>
+        <div class="admin-section__content" id="manage-books-panel" data-books-panel>
+          <p>Add, edit, or remove books from the catalog. Changes are saved to Firestore and sync back into this table automatically.</p>
+          <div data-books-table>
+            <div class="empty-state">Loading books...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RECENT REQUESTS -->
+      <div class="admin-section">
+        <h2>Recent book requests</h2>
+        <p>Recent student requests from Firestore. Review and contact students to fulfill requests.</p>
+        <div data-requests-table>
+          <div class="empty-state">No requests yet.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ADD/EDIT BOOK MODAL -->
+  <div class="modal-backdrop" data-book-modal>
+    <div class="modal">
+      <h3 data-book-modal-title>Add Book</h3>
+      <form data-book-form>
+        <div class="modal__field">
+          <label for="book-title">Title *</label>
+          <input type="text" id="book-title" name="title" required />
+        </div>
+        <div class="modal__field">
+          <label for="book-isbn">ISBN</label>
+          <input type="text" id="book-isbn" name="isbn" />
+        </div>
+        <div class="modal__field">
+          <label for="book-author">Author</label>
+          <input type="text" id="book-author" name="author" />
+        </div>
+        <div class="modal__field">
+          <label for="book-subject-select">Subject *</label>
+          <select id="book-subject-select" data-book-subject-select required></select>
+          <p class="modal__hint">Choose an existing subject or select "Add new subject..." to create one.</p>
+        </div>
+        <div class="modal__field modal__field--hidden" data-custom-subject-field>
+          <label for="book-subject-custom">New Subject *</label>
+          <input type="text" id="book-subject-custom" data-book-subject-custom placeholder="Enter a new subject" />
+        </div>
+        <div class="modal__field">
+          <label for="book-status">Status *</label>
+          <select id="book-status" name="status" required>
+            <option value="Available">Available</option>
+            <option value="Pending">Pending</option>
+            <option value="Checked Out">Checked Out</option>
+          </select>
+        </div>
+        <div class="modal__field">
+          <label for="book-quantity">Quantity *</label>
+          <input type="number" id="book-quantity" name="quantity" min="1" value="1" required />
+        </div>
+        <div class="modal__actions">
+          <button type="button" class="btn btn--ghost" data-book-modal-cancel>Cancel</button>
+          <button type="submit" class="btn btn--accent">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <footer class="site-footer" data-footer></footer>
+
+  <script type="module">
+    import { loadContent, renderNav, renderFooter, toast } from './js/main.js';
+    import { db, auth, firebaseProjectId } from './js/firebase-config.js';
+    import {
+      signInWithEmailAndPassword,
+      signOut,
+      onAuthStateChanged
+    } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+    import {
+      collection,
+      doc,
+      getDoc,
+      onSnapshot,
+      setDoc,
+      updateDoc,
+      deleteDoc,
+      serverTimestamp
+    } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+    // Fixed admin credentials
+    const ADMIN_EMAIL = 'admin@freetextbooklibrary.local';
+    const DEFAULT_SUBJECTS = ['Business', 'English', 'Entertainment', 'History', 'Humanities', 'Language', 'Uncategorized'];
+    const CUSTOM_SUBJECT_VALUE = '__custom__';
+
+    let currentUser = null;
+    let allBooks = [];
+    let editingBookDocId = null;
+    let booksUnsubscribe = null;
+    let requestsUnsubscribe = null;
+
+    (async () => {
+      await loadContent();
+      renderNav('admin.html');
+      renderFooter();
+      configureQuickLinks();
+      refreshSubjectOptions();
+
+      // Listen for auth state changes
+      if (auth && db) {
+        onAuthStateChanged(auth, async (user) => {
+          if (user) {
+            // Check if user is admin
+            try {
+              const adminDoc = await getDoc(doc(db, 'admins', user.uid));
+              if (adminDoc.exists() && adminDoc.data().isAdmin) {
+                currentUser = user;
+                showDashboard();
+              } else {
+                console.error('User is not an admin');
+                toast('Access denied: You do not have admin privileges.');
+                await signOut(auth);
+                stopDashboardSync();
+                closeBookModal();
+                showLogin();
+              }
+            } catch (error) {
+              console.error('Error checking admin status:', error);
+              stopDashboardSync();
+              closeBookModal();
+              showLogin();
+            }
+          } else {
+            currentUser = null;
+            stopDashboardSync();
+            closeBookModal();
+            showLogin();
+          }
+        });
+      } else {
+        // Fallback if Firebase not configured
+        console.warn('Firebase not configured');
+        showLogin();
+      }
+
+      document.querySelector('[data-login-form]').addEventListener('submit', handleLogin);
+      document.querySelector('[data-logout]').addEventListener('click', handleLogout);
+      document.querySelector('[data-add-book-btn]').addEventListener('click', openAddBookModal);
+      document.querySelector('[data-books-toggle]').addEventListener('click', toggleBooksSection);
+      document.querySelector('[data-book-modal-cancel]').addEventListener('click', closeBookModal);
+      document.querySelector('[data-book-subject-select]').addEventListener('change', handleSubjectSelectionChange);
+      document.querySelector('[data-book-form]').addEventListener('submit', handleBookFormSubmit);
+      document.querySelector('[data-book-modal]').addEventListener('click', (event) => {
+        if (event.target === event.currentTarget) {
+          closeBookModal();
+        }
+      });
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          closeBookModal();
+        }
+      });
+    })();
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const passwordInput = document.querySelector('[data-login-password]');
+      const err = document.querySelector('[data-login-error]');
+
+      const password = passwordInput.value;
+
+      if (!auth) {
+        err.textContent = 'Firebase not configured. Please set up Firebase first.';
+        return;
+      }
+
+      try {
+        // Use fixed admin email with provided password
+        await signInWithEmailAndPassword(auth, ADMIN_EMAIL, password);
+        err.textContent = '';
+        // Auth state listener will handle showing dashboard
+      } catch (error) {
+        console.error('Login error:', error);
+        let message = 'Incorrect password. Contact the library lead if you need access.';
+
+        if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+          message = 'Incorrect password.';
+        } else if (error.code === 'auth/too-many-requests') {
+          message = 'Too many failed attempts. Please try again later.';
+        }
+
+        err.textContent = message;
+        passwordInput.value = '';
+      }
+    }
+
+    async function handleLogout() {
+      if (auth) {
+        try {
+          await signOut(auth);
+          toast('Signed out successfully');
+        } catch (error) {
+          console.error('Logout error:', error);
+          toast('Error signing out');
+        }
+      }
+    }
+
+    function showLogin() {
+      document.querySelector('[data-login]').style.display = 'flex';
+      document.querySelector('[data-dashboard]').style.display = 'none';
+    }
+
+    async function showDashboard() {
+      document.querySelector('[data-login]').style.display = 'none';
+      document.querySelector('[data-dashboard]').style.display = 'block';
+      startDashboardSync();
+    }
+
+    function startDashboardSync() {
+      if (!db) {
+        document.querySelector('[data-books-table]').innerHTML = '<div class="empty-state">Firebase not configured.</div>';
+        document.querySelector('[data-requests-table]').innerHTML = '<div class="empty-state">Firebase not configured.</div>';
+        return;
+      }
+
+      if (!booksUnsubscribe) {
+        booksUnsubscribe = onSnapshot(collection(db, 'books'), (snapshot) => {
+          allBooks = snapshot.docs
+            .map(normalizeBookSnapshot)
+            .sort(compareBooks);
+
+          renderBooksTable();
+          updateStats();
+          refreshSubjectOptions(getCurrentSubjectValue());
+        }, (error) => {
+          console.error('Error loading books:', error);
+          document.querySelector('[data-books-table]').innerHTML = '<div class="empty-state">Could not load books from Firestore.</div>';
+          toast('Could not connect to Firestore for books.');
+        });
+      }
+
+      if (!requestsUnsubscribe) {
+        requestsUnsubscribe = onSnapshot(collection(db, 'requests'), (snapshot) => {
+          renderRequests(snapshot.docs);
+        }, (error) => {
+          console.error('Error loading requests:', error);
+          document.querySelector('[data-requests-table]').innerHTML = '<div class="empty-state">Error loading requests.</div>';
+        });
+      }
+    }
+
+    function stopDashboardSync() {
+      if (booksUnsubscribe) {
+        booksUnsubscribe();
+        booksUnsubscribe = null;
+      }
+
+      if (requestsUnsubscribe) {
+        requestsUnsubscribe();
+        requestsUnsubscribe = null;
+      }
+    }
+
+    function renderRequests(requestDocs) {
+      const container = document.querySelector('[data-requests-table]');
+      const sortedRequests = [...requestDocs].sort((a, b) => {
+        const aTime = a.data().createdAt?.toMillis ? a.data().createdAt.toMillis() : 0;
+        const bTime = b.data().createdAt?.toMillis ? b.data().createdAt.toMillis() : 0;
+        return bTime - aTime;
+      }).slice(0, 10);
+
+      if (!sortedRequests.length) {
+        container.innerHTML = '<div class="empty-state">No requests yet.</div>';
+        return;
+      }
+
+      const rows = sortedRequests.map((requestDoc) => {
+        const request = requestDoc.data();
+        const date = request.createdAt?.toDate ? request.createdAt.toDate().toLocaleDateString() : 'N/A';
+        return `
+          <tr>
+            <td><strong>${escapeHtml(request.bookTitle || 'Unknown')}</strong></td>
+            <td>${escapeHtml(request.name || 'N/A')}</td>
+            <td>${escapeHtml(request.email || 'N/A')}</td>
+            <td>${escapeHtml(request.course || 'N/A')}</td>
+            <td>${date}</td>
+          </tr>
+        `;
+      });
+
+      container.innerHTML = `
+        <table class="request-queue">
+          <thead>
+            <tr><th>Book</th><th>Student</th><th>Email</th><th>Course</th><th>Date</th></tr>
+          </thead>
+          <tbody>${rows.join('')}</tbody>
+        </table>
+      `;
+    }
+
+    function renderBooksTable() {
+      const container = document.querySelector('[data-books-table]');
+      if (!allBooks.length) {
+        container.innerHTML = '<div class="empty-state">No books in inventory.</div>';
+        return;
+      }
+
+      const rows = allBooks.map(b => {
+        const statusClass = b.status === 'Available' ? 'status--available'
+          : b.status === 'Pending' ? 'status--pending' : 'status--out';
+        return `
+          <tr>
+            <td><strong>${escapeHtml(b.title)}</strong></td>
+            <td>${escapeHtml(b.subject)}</td>
+            <td style="font-family: monospace; font-size: 0.85em;">${escapeHtml(b.isbn || '—')}</td>
+            <td>${escapeHtml(b.author || '—')}</td>
+            <td><span class="status ${statusClass}">${b.status}</span></td>
+            <td>${b.quantity || 1}</td>
+            <td style="text-align: right;">
+              <button class="btn btn--ghost btn--small" data-edit-book="${escapeHtml(b.docId)}">Edit</button>
+              <button class="btn btn--ghost btn--small" data-delete-book="${escapeHtml(b.docId)}">Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      container.innerHTML = `
+        <table class="request-queue">
+          <thead>
+            <tr><th>Title</th><th>Subject</th><th>ISBN</th><th>Author</th><th>Status</th><th>Qty</th><th style="text-align: right;">Actions</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+
+      // Attach event listeners for edit/delete buttons
+      container.querySelectorAll('[data-edit-book]').forEach(btn => {
+        btn.addEventListener('click', () => openEditBookModal(btn.dataset.editBook));
+      });
+
+      container.querySelectorAll('[data-delete-book]').forEach(btn => {
+        btn.addEventListener('click', () => handleDeleteBook(btn.dataset.deleteBook));
+      });
+    }
+
+    function openAddBookModal() {
+      setBooksCollapsed(false);
+      editingBookDocId = null;
+      document.querySelector('[data-book-modal-title]').textContent = 'Add Book';
+      const form = document.querySelector('[data-book-form]');
+      form.reset();
+      form.querySelector('[name="status"]').value = 'Available';
+      form.querySelector('[name="quantity"]').value = 1;
+      setSubjectSelection('Uncategorized');
+      document.querySelector('[data-book-modal]').classList.add('show');
+    }
+
+    function openEditBookModal(bookDocId) {
+      setBooksCollapsed(false);
+      const book = allBooks.find(b => b.docId === bookDocId);
+      if (!book) return;
+
+      editingBookDocId = bookDocId;
+      document.querySelector('[data-book-modal-title]').textContent = 'Edit Book';
+
+      const form = document.querySelector('[data-book-form]');
+      form.querySelector('[name="title"]').value = book.title || '';
+      form.querySelector('[name="isbn"]').value = book.isbn || '';
+      form.querySelector('[name="author"]').value = book.author || '';
+      form.querySelector('[name="status"]').value = book.status || 'Available';
+      form.querySelector('[name="quantity"]').value = book.quantity || 1;
+
+      setSubjectSelection(book.subject || 'Uncategorized');
+      document.querySelector('[data-book-modal]').classList.add('show');
+    }
+
+    function closeBookModal() {
+      document.querySelector('[data-book-modal]').classList.remove('show');
+      document.querySelector('[data-book-form]').reset();
+      setSubjectSelection('Uncategorized');
+      editingBookDocId = null;
+    }
+
+    async function handleBookFormSubmit(e) {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const submitButton = e.target.querySelector('button[type="submit"]');
+
+      if (!db || !currentUser) {
+        toast('The admin connection is unavailable right now.');
+        return;
+      }
+
+      submitButton.disabled = true;
+      submitButton.textContent = 'Saving...';
+
+      const subject = getSelectedSubject();
+      if (!subject) {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Save';
+        toast('Choose a subject or enter a new one.');
+        focusSubjectField();
+        return;
+      }
+
+      const bookData = {
+        title: String(formData.get('title') || '').trim(),
+        isbn: String(formData.get('isbn') || '').trim(),
+        author: String(formData.get('author') || '').trim(),
+        subject,
+        status: formData.get('status'),
+        quantity: Math.max(1, parseInt(formData.get('quantity'), 10) || 1),
+        updatedAt: serverTimestamp()
+      };
+
+      try {
+        if (editingBookDocId !== null) {
+          // Update existing book
+          const bookDoc = doc(db, 'books', editingBookDocId);
+          await updateDoc(bookDoc, bookData);
+          toast('Book updated successfully');
+        } else {
+          // Add new book
+          const nextId = await getNextBookId();
+          bookData.id = nextId;
+          bookData.createdAt = serverTimestamp();
+
+          // Create document with ID as document name
+          const bookDoc = doc(db, 'books', nextId.toString());
+          await setDoc(bookDoc, bookData);
+          toast('Book added successfully');
+        }
+
+        closeBookModal();
+      } catch (error) {
+        console.error('Error saving book:', error);
+        toast(error.code === 'permission-denied'
+          ? 'Firebase rejected that change. Check the admin user permissions.'
+          : 'Error saving book. Please try again.');
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Save';
+      }
+    }
+
+    async function handleDeleteBook(bookDocId) {
+      const book = allBooks.find(b => b.docId === bookDocId);
+      if (!book) return;
+
+      if (!db || !currentUser) {
+        toast('The admin connection is unavailable right now.');
+        return;
+      }
+
+      if (!confirm(`Are you sure you want to delete "${book.title}"? This cannot be undone.`)) {
+        return;
+      }
+
+      try {
+        await deleteDoc(doc(db, 'books', bookDocId));
+        toast('Book deleted successfully');
+      } catch (error) {
+        console.error('Error deleting book:', error);
+        toast(error.code === 'permission-denied'
+          ? 'Firebase rejected that delete. Check the admin user permissions.'
+          : 'Error deleting book. Please try again.');
+      }
+    }
+
+    async function getNextBookId() {
+      const maxId = allBooks.reduce((max, book) => Math.max(max, book.id || 0), 0);
+      return maxId + 1;
+    }
+
+    function updateStats() {
+      const available = allBooks.filter(b => b.status === 'Available').length;
+      const out = allBooks.length - available;
+
+      document.querySelector('[data-stat-total]').textContent = allBooks.length;
+      document.querySelector('[data-stat-available]').textContent = available;
+      document.querySelector('[data-stat-out]').textContent = out;
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    function configureQuickLinks() {
+      const consoleRoot = firebaseProjectId
+        ? `https://console.firebase.google.com/project/${firebaseProjectId}`
+        : 'https://console.firebase.google.com/';
+
+      setQuickLink('[data-link-sheet]', `${consoleRoot}/firestore/data/~2Fbooks`);
+      setQuickLink('[data-link-form]', `${consoleRoot}/authentication/users`);
+      setQuickLink('[data-link-requests]', `${consoleRoot}/firestore/data/~2Frequests`);
+    }
+
+    function setQuickLink(selector, href) {
+      const link = document.querySelector(selector);
+      if (!link) return;
+      link.href = href;
+    }
+
+    function toggleBooksSection() {
+      const toggle = document.querySelector('[data-books-toggle]');
+      const isExpanded = toggle?.getAttribute('aria-expanded') === 'true';
+      setBooksCollapsed(isExpanded);
+    }
+
+    function setBooksCollapsed(collapsed) {
+      const panel = document.querySelector('[data-books-panel]');
+      const toggle = document.querySelector('[data-books-toggle]');
+      if (!panel || !toggle) return;
+
+      panel.hidden = collapsed;
+      toggle.setAttribute('aria-expanded', String(!collapsed));
+      toggle.textContent = collapsed ? 'Expand' : 'Collapse';
+    }
+
+    function normalizeBookSnapshot(bookDoc) {
+      const data = bookDoc.data();
+      const parsedId = Number(data.id ?? bookDoc.id);
+
+      return {
+        docId: bookDoc.id,
+        id: Number.isFinite(parsedId) ? parsedId : 0,
+        title: data.title || '',
+        isbn: data.isbn || '',
+        author: data.author || '',
+        subject: data.subject || 'Uncategorized',
+        status: data.status || 'Available',
+        quantity: Number.parseInt(data.quantity, 10) || 1
+      };
+    }
+
+    function compareBooks(a, b) {
+      if (a.id && b.id && a.id !== b.id) {
+        return a.id - b.id;
+      }
+      return a.title.localeCompare(b.title);
+    }
+
+    function refreshSubjectOptions(selectedSubject = '') {
+      const select = document.querySelector('[data-book-subject-select]');
+      const customInput = document.querySelector('[data-book-subject-custom]');
+      if (!select || !customInput) return;
+
+      const subjects = new Set(DEFAULT_SUBJECTS);
+      allBooks.forEach((book) => {
+        if (book.subject) {
+          subjects.add(book.subject);
+        }
+      });
+
+      const hasSelectedInExistingSet = !selectedSubject || subjects.has(selectedSubject);
+
+      if (selectedSubject) {
+        subjects.add(selectedSubject);
+      }
+
+      const sortedSubjects = Array.from(subjects).sort((a, b) => a.localeCompare(b));
+      select.innerHTML = sortedSubjects
+        .map((subject) => `<option value="${escapeHtml(subject)}">${escapeHtml(subject)}</option>`)
+        .concat(`<option value="${CUSTOM_SUBJECT_VALUE}">Add new subject...</option>`)
+        .join('');
+
+      if (hasSelectedInExistingSet) {
+        select.value = selectedSubject || 'Uncategorized';
+        customInput.value = '';
+      } else {
+        select.value = CUSTOM_SUBJECT_VALUE;
+        customInput.value = selectedSubject;
+      }
+
+      updateCustomSubjectField();
+    }
+
+    function getCurrentSubjectValue() {
+      return getSelectedSubject() || '';
+    }
+
+    function setSubjectSelection(subject) {
+      refreshSubjectOptions(subject);
+    }
+
+    function handleSubjectSelectionChange() {
+      updateCustomSubjectField();
+
+      if (document.querySelector('[data-book-subject-select]')?.value === CUSTOM_SUBJECT_VALUE) {
+        document.querySelector('[data-book-subject-custom]')?.focus();
+      }
+    }
+
+    function updateCustomSubjectField() {
+      const select = document.querySelector('[data-book-subject-select]');
+      const field = document.querySelector('[data-custom-subject-field]');
+      const customInput = document.querySelector('[data-book-subject-custom]');
+      if (!select || !field || !customInput) return;
+
+      const isCustom = select.value === CUSTOM_SUBJECT_VALUE;
+      field.classList.toggle('modal__field--hidden', !isCustom);
+      customInput.required = isCustom;
+
+      if (!isCustom) {
+        customInput.setCustomValidity('');
+      }
+    }
+
+    function getSelectedSubject() {
+      const select = document.querySelector('[data-book-subject-select]');
+      const customInput = document.querySelector('[data-book-subject-custom]');
+      if (!select || !customInput) return '';
+
+      if (select.value === CUSTOM_SUBJECT_VALUE) {
+        const customSubject = normalizeSubject(customInput.value);
+        customInput.setCustomValidity(customSubject ? '' : 'Please enter a subject name.');
+        return customSubject;
+      }
+
+      customInput.setCustomValidity('');
+      return normalizeSubject(select.value) || 'Uncategorized';
+    }
+
+    function focusSubjectField() {
+      const select = document.querySelector('[data-book-subject-select]');
+      const customInput = document.querySelector('[data-book-subject-custom]');
+      if (!select || !customInput) return;
+
+      if (select.value === CUSTOM_SUBJECT_VALUE) {
+        customInput.focus();
+        customInput.reportValidity();
+        return;
+      }
+
+      select.focus();
+    }
+
+    function normalizeSubject(subject) {
+      return String(subject || '').trim().replace(/\s+/g, ' ');
+    }
+  </script>
+</body>
+</html>

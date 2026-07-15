@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Free Textbook Library · College of Charleston</title>
+  <meta name="description" content="A student-run lending library. Free textbooks, no fees, no questions. Browse the catalog and request a book in under a minute." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="css/reset.css" />
+  <link rel="stylesheet" href="css/variables.css" />
+  <link rel="stylesheet" href="css/global.css" />
+  <link rel="stylesheet" href="css/pages/home.css" />
+</head>
+<body>
+  <nav class="site-nav" data-nav></nav>
+
+  <main>
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hero__ribbon"></div>
+      <div class="container">
+        <div class="eyebrow" data-hero-eyebrow></div>
+        <div class="hero__grid">
+          <h1 class="hero__headline" data-hero-headline></h1>
+          <div>
+            <p class="hero__lead" data-hero-lead></p>
+            <div class="hero__ctas" data-hero-ctas></div>
+          </div>
+        </div>
+
+        <div class="stats" data-stats></div>
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section id="how" class="how">
+      <div class="container">
+        <div class="how__header">
+          <h2 class="how__title" data-how-title></h2>
+          <p class="how__intro" data-how-intro></p>
+        </div>
+        <div class="steps" data-steps></div>
+      </div>
+    </section>
+
+    <!-- ABOUT -->
+    <section id="about" class="about-section">
+      <div class="container about-section__inner">
+        <h2 class="about-section__title" data-about-title></h2>
+        <div class="about-section__body" data-about-body></div>
+      </div>
+    </section>
+
+    <!-- SUBJECTS -->
+    <section class="subjects-strip">
+      <div class="container">
+        <h2 data-subjects-title></h2>
+        <div class="subjects-grid" data-subjects-grid>
+          <div class="empty-state">Loading subjects…</div>
+        </div>
+
+        <!-- CTA BANNER -->
+        <div class="cta-banner" data-cta-banner></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" data-footer></footer>
+
+  <script type="module">
+    import { loadContent, renderNav, renderFooter, CONTENT } from './js/main.js';
+    import { fetchInventory, groupBySubject } from './js/inventory.js';
+
+    (async () => {
+      const content = await loadContent();
+      renderNav('index.html');
+      renderFooter();
+
+      // HERO
+      document.querySelector('[data-hero-eyebrow]').textContent = content.hero.eyebrow;
+      document.querySelector('[data-hero-headline]').innerHTML = content.hero.headline;
+      document.querySelector('[data-hero-lead]').textContent = content.hero.lead;
+      document.querySelector('[data-hero-ctas]').innerHTML = `
+        <a class="btn btn--primary" href="${content.hero.ctaPrimary.href}">${content.hero.ctaPrimary.label}</a>
+        <a class="btn btn--ghost" href="${content.hero.ctaSecondary.href}">${content.hero.ctaSecondary.label}</a>
+      `;
+
+      // HOW
+      document.querySelector('[data-how-title]').textContent = content.how.title;
+      document.querySelector('[data-how-intro]').textContent = content.how.intro;
+      document.querySelector('[data-steps]').innerHTML = content.how.steps.map(s => `
+        <div class="step">
+          <div class="step__number"></div>
+          <h3 class="step__title">${s.title}</h3>
+          <p class="step__desc">${s.desc}</p>
+        </div>
+      `).join('');
+
+      // ABOUT
+      document.querySelector('[data-about-title]').textContent = content.about.title;
+      document.querySelector('[data-about-body]').innerHTML = content.about.paragraphs.map(p => `<p>${p}</p>`).join('');
+
+      // SUBJECTS TITLE
+      document.querySelector('[data-subjects-title]').textContent = content.subjectsIntro;
+
+      // CTA BANNER
+      document.querySelector('[data-cta-banner]').innerHTML = `
+        <div>
+          <h2>${content.ctaBanner.headline}</h2>
+          <p>${content.ctaBanner.lead}</p>
+        </div>
+        <a href="${content.ctaBanner.cta.href}" class="btn btn--accent">${content.ctaBanner.cta.label}</a>
+      `;
+
+      // Fetch inventory for stats + subject grid
+      const books = await fetchInventory();
+      const subjectMap = groupBySubject(books);
+      const availableBooks = books.filter(b => b.status === 'Available');
+
+      // STATS
+      const statsHTML = content.stats.map(s => {
+        let value = s.value;
+        if (s.key === 'totalBooks') value = availableBooks.length;
+        if (s.key === 'totalSubjects') value = Object.keys(subjectMap).length;
+        return `<div class="stat"><div class="stat__number">${value}</div><div class="stat__label">${s.label}</div></div>`;
+      }).join('');
+      document.querySelector('[data-stats]').innerHTML = statsHTML;
+
+      // SUBJECTS GRID
+      const subjectsHTML = Object.entries(subjectMap)
+        .sort(([a],[b]) => a.localeCompare(b))
+        .map(([subject, list]) => {
+          const availableCount = list.filter(b => b.status === 'Available').length;
+          return `
+            <a class="subject-card" href="catalog.html?subject=${encodeURIComponent(subject)}">
+              <div class="subject-card__name">${subject}</div>
+              <div class="subject-card__count">${availableCount} available · ${list.length} total</div>
+            </a>
+          `;
+        }).join('');
+      document.querySelector('[data-subjects-grid]').innerHTML = subjectsHTML || '<div class="empty-state">No books yet.</div>';
+    })();
+  </script>
+</body>
+</html>

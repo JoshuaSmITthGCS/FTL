@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Catalog · Free Textbook Library</title>
+  <meta name="description" content="Browse the full catalog of free textbooks at the College of Charleston. Filter by subject, search by title or ISBN, request in one click." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="css/reset.css" />
+  <link rel="stylesheet" href="css/variables.css" />
+  <link rel="stylesheet" href="css/global.css" />
+  <link rel="stylesheet" href="css/pages/catalog.css" />
+</head>
+<body>
+  <nav class="site-nav" data-nav></nav>
+
+  <main>
+    <header class="catalog-header">
+      <div class="container">
+        <div class="eyebrow">Browse · Search · Request</div>
+        <h1 data-cat-title></h1>
+        <p data-cat-lead></p>
+        <div class="catalog-meta">
+          <div class="catalog-meta__count" data-count>—</div>
+          <div class="catalog-meta__updated">Updated from inventory sheet</div>
+        </div>
+      </div>
+    </header>
+
+    <div class="container">
+      <div class="catalog-layout">
+        <!-- FILTERS -->
+        <aside class="filters">
+          <div class="filters__group">
+            <h3>Search</h3>
+            <input type="text" class="filters__search" placeholder="Title, ISBN, author…" data-search />
+          </div>
+
+          <div class="filters__group">
+            <h3>Availability</h3>
+            <label class="filter-option">
+              <input type="checkbox" data-filter-available />
+              <span>Available only</span>
+            </label>
+          </div>
+
+          <div class="filters__group">
+            <h3>Subject</h3>
+            <div data-subject-filters></div>
+          </div>
+
+          <button class="filters__reset" data-reset>Reset filters</button>
+        </aside>
+
+        <!-- TABLE -->
+        <section>
+          <div class="catalog-table-wrap">
+            <table class="catalog-table">
+              <thead>
+                <tr>
+                  <th data-sort="title">Title</th>
+                  <th data-sort="subject">Subject</th>
+                  <th data-sort="isbn">ISBN</th>
+                  <th data-sort="status">Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody data-table-body>
+                <tr><td colspan="5" class="empty-state">Loading catalog…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <!-- REQUEST MODAL -->
+  <div class="modal-backdrop" data-modal>
+    <div class="modal">
+      <h3>Book Request — Free Textbook Library</h3>
+      <p class="modal__intro">Please use this form to request a textbook from the Free Textbook Library. We will contact you once the book is available.</p>
+      <div class="modal__book" data-modal-book></div>
+
+      <form data-request-form>
+        <div class="modal__field">
+          <label for="req-course">Course Name and Number (e.g., MATH 101, HIST 210)</label>
+          <input type="text" id="req-course" name="course" placeholder="MATH 101, HIST 210" required />
+        </div>
+        <fieldset class="modal__field modal__field--choice">
+          <legend>Do you need a physical copy or an electronic version (if available)?</legend>
+          <div class="modal__choice-group">
+            <label class="modal__choice">
+              <input type="radio" name="format" value="Physical Copy" />
+              <span>Physical Copy</span>
+            </label>
+            <label class="modal__choice">
+              <input type="radio" name="format" value="Electronic/Digital Version" />
+              <span>Electronic/Digital Version</span>
+            </label>
+            <label class="modal__choice">
+              <input type="radio" name="format" value="Either/No Preference" checked />
+              <span>Either/No Preference</span>
+            </label>
+          </div>
+        </fieldset>
+        <div class="modal__field">
+          <label for="req-name">Your Name</label>
+          <input type="text" id="req-name" name="name" required />
+        </div>
+        <div class="modal__field">
+          <label for="req-email">CofC Email</label>
+          <input type="email" id="req-email" name="email" required />
+        </div>
+        <div class="modal__field">
+          <label for="req-msg">Notes (e.g., specific edition requirements, urgency, alternative contact method)</label>
+          <textarea id="req-msg" name="message" rows="3" placeholder="Any additional information..."></textarea>
+        </div>
+        <fieldset class="modal__field modal__field--choice">
+          <legend>How would you rate the availability of affordable textbooks currently?</legend>
+          <div class="modal__scale-hint">
+            <span>Very Poor</span>
+            <span>Excellent</span>
+          </div>
+          <div class="modal__rating-row">
+            <label class="modal__rating">
+              <input type="radio" name="availabilityRating" value="1" required />
+              <span>1</span>
+            </label>
+            <label class="modal__rating">
+              <input type="radio" name="availabilityRating" value="2" />
+              <span>2</span>
+            </label>
+            <label class="modal__rating">
+              <input type="radio" name="availabilityRating" value="3" />
+              <span>3</span>
+            </label>
+            <label class="modal__rating">
+              <input type="radio" name="availabilityRating" value="4" />
+              <span>4</span>
+            </label>
+            <label class="modal__rating">
+              <input type="radio" name="availabilityRating" value="5" />
+              <span>5</span>
+            </label>
+          </div>
+        </fieldset>
+        <div class="modal__actions">
+          <button type="button" class="btn btn--ghost" data-modal-cancel>Cancel</button>
+          <button type="submit" class="btn btn--accent">Send request</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <footer class="site-footer" data-footer></footer>
+
+  <script type="module">
+    import { loadContent, renderNav, renderFooter, toast, CONTENT } from './js/main.js';
+    import { fetchInventory, filterBooks, sortBooks } from './js/inventory.js';
+    import { db } from './js/firebase-config.js';
+    import { collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+    let allBooks = [];
+    let filtered = [];
+    let sortKey = 'title';
+    let sortDir = 'asc';
+    let currentBook = null;
+
+    const state = {
+      search: '',
+      subjects: [],
+      availableOnly: false
+    };
+
+    (async () => {
+      const content = await loadContent();
+      renderNav('catalog.html');
+      renderFooter();
+
+      document.querySelector('[data-cat-title]').textContent = content.catalog.title;
+      document.querySelector('[data-cat-lead]').textContent = content.catalog.lead;
+
+      allBooks = await fetchInventory();
+
+      // Read subject from URL (from home page subject cards)
+      const params = new URLSearchParams(location.search);
+      const preSubject = params.get('subject');
+      if (preSubject) state.subjects = [preSubject];
+
+      buildSubjectFilters();
+      applyAndRender();
+      attachEvents();
+    })();
+
+    function buildSubjectFilters() {
+      const counts = {};
+      for (const b of allBooks) {
+        counts[b.subject] = (counts[b.subject] || 0) + 1;
+      }
+      const container = document.querySelector('[data-subject-filters]');
+      container.innerHTML = Object.entries(counts)
+        .sort(([a],[b]) => a.localeCompare(b))
+        .map(([subject, count]) => `
+          <label class="filter-option">
+            <input type="checkbox" value="${subject}" data-subject-check ${state.subjects.includes(subject) ? 'checked' : ''} />
+            <span>${subject}</span>
+            <span class="filter-option__count">${count}</span>
+          </label>
+        `).join('');
+    }
+
+    function applyAndRender() {
+      filtered = filterBooks(allBooks, state);
+      filtered = sortBooks(filtered, sortKey, sortDir);
+      renderTable();
+      document.querySelector('[data-count]').textContent =
+        `${filtered.length} ${filtered.length === 1 ? 'book' : 'books'}`;
+    }
+
+    function renderTable() {
+      const body = document.querySelector('[data-table-body]');
+      if (!filtered.length) {
+        body.innerHTML = `<tr><td colspan="5" class="empty-state">${CONTENT.catalog.emptyMessage}</td></tr>`;
+        return;
+      }
+      body.innerHTML = filtered.map(b => {
+        const statusClass = b.status === 'Available' ? 'status--available'
+          : b.status === 'Pending' ? 'status--pending' : 'status--out';
+        const canRequest = b.status === 'Available';
+        return `
+          <tr>
+            <td data-label="Title"><div class="book-title">${escapeHtml(b.title)}</div></td>
+            <td data-label="Subject"><span class="tag">${escapeHtml(b.subject)}</span></td>
+            <td data-label="ISBN"><span class="book-isbn">${escapeHtml(b.isbn || '—')}</span></td>
+            <td data-label="Status"><span class="status ${statusClass}">${b.status}</span></td>
+            <td data-label="Action">
+              <button class="request-btn" data-request-id="${b.id}" ${canRequest ? '' : 'disabled'}>
+                ${canRequest ? 'Request' : 'Unavailable'}
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function attachEvents() {
+      // Search
+      document.querySelector('[data-search]').addEventListener('input', e => {
+        state.search = e.target.value;
+        applyAndRender();
+      });
+
+      // Available-only
+      document.querySelector('[data-filter-available]').addEventListener('change', e => {
+        state.availableOnly = e.target.checked;
+        applyAndRender();
+      });
+
+      // Subject checkboxes (delegated)
+      document.querySelector('[data-subject-filters]').addEventListener('change', e => {
+        if (!e.target.matches('[data-subject-check]')) return;
+        const boxes = document.querySelectorAll('[data-subject-check]');
+        state.subjects = Array.from(boxes).filter(b => b.checked).map(b => b.value);
+        applyAndRender();
+      });
+
+      // Sort headers
+      document.querySelectorAll('.catalog-table th[data-sort]').forEach(th => {
+        th.addEventListener('click', () => {
+          const key = th.dataset.sort;
+          if (sortKey === key) {
+            sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortKey = key;
+            sortDir = 'asc';
+          }
+          document.querySelectorAll('.catalog-table th').forEach(el => el.classList.remove('sort-asc', 'sort-desc'));
+          th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+          applyAndRender();
+        });
+      });
+
+      // Reset
+      document.querySelector('[data-reset]').addEventListener('click', () => {
+        state.search = '';
+        state.subjects = [];
+        state.availableOnly = false;
+        document.querySelector('[data-search]').value = '';
+        document.querySelector('[data-filter-available]').checked = false;
+        document.querySelectorAll('[data-subject-check]').forEach(b => b.checked = false);
+        applyAndRender();
+      });
+
+      // Request buttons (delegated)
+      document.querySelector('[data-table-body]').addEventListener('click', e => {
+        const btn = e.target.closest('[data-request-id]');
+        if (!btn || btn.disabled) return;
+        const id = parseInt(btn.dataset.requestId, 10);
+        const book = allBooks.find(b => b.id === id);
+        if (book) openModal(book);
+      });
+
+      // Modal
+      const modal = document.querySelector('[data-modal]');
+      document.querySelector('[data-modal-cancel]').addEventListener('click', closeModal);
+      modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+      // Form submit → Google Form
+      document.querySelector('[data-request-form]').addEventListener('submit', e => {
+        e.preventDefault();
+        submitRequest(new FormData(e.target));
+      });
+    }
+
+    function openModal(book) {
+      currentBook = book;
+      document.querySelector('[data-modal-book]').innerHTML = `
+        <strong>${escapeHtml(book.title)}</strong>
+        ${book.author ? `<div>Author: ${escapeHtml(book.author)}</div>` : ''}
+        <div>${escapeHtml(book.subject)} · ISBN ${escapeHtml(book.isbn || 'n/a')}</div>
+      `;
+      document.querySelector('[data-modal]').classList.add('show');
+    }
+
+    function closeModal() {
+      document.querySelector('[data-modal]').classList.remove('show');
+      document.querySelector('[data-request-form]').reset();
+      currentBook = null;
+    }
+
+    async function submitRequest(formData) {
+      if (!currentBook) return;
+
+      const submitBtn = document.querySelector('[data-request-form] button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending...';
+
+      try {
+        // Try Firestore first
+        if (db) {
+          const requestData = {
+            bookId: currentBook.id,
+            bookTitle: currentBook.title || '',
+            bookIsbn: currentBook.isbn || '',
+            bookAuthor: currentBook.author || '',
+            course: formData.get('course') || '',
+            format: formData.get('format') || '',
+            name: formData.get('name') || '',
+            email: formData.get('email') || '',
+            message: formData.get('message') || '',
+            availabilityRating: formData.get('availabilityRating') || '',
+            status: 'pending',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          };
+
+          await addDoc(collection(db, 'requests'), requestData);
+          toast('✓ Request sent successfully! A volunteer will email you within 48 hours.');
+          closeModal();
+          return;
+        }
+      } catch (error) {
+        console.error('Firestore submission error:', error);
+        // Fall through to mailto fallback
+      }
+
+      // Fallback: mailto
+      const subject = `Book request: ${currentBook.title}`;
+      const body = `Book: ${currentBook.title}\nISBN: ${currentBook.isbn || 'None'}\nAuthor(s): ${currentBook.author || 'None'}\nSubject: ${currentBook.subject}\nCourse: ${formData.get('course') || 'None'}\nFormat Preference: ${formData.get('format') || 'None'}\nAvailability Rating: ${formData.get('availabilityRating') || 'None'}\n\nName: ${formData.get('name')}\nEmail: ${formData.get('email')}\n\nNotes: ${formData.get('message') || 'None'}`;
+      window.location.href = `mailto:${CONTENT.contact.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      toast('Opening your email — send the message to finish the request.');
+      closeModal();
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Send request';
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+  </script>
+</body>
+</html>

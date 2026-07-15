@@ -1,0 +1,76 @@
+/* ============================================================
+   DESIGN TOKENS — Free Textbook Library
+   Edit colors, fonts, or spacing here and they propagate site-wide.
+   ============================================================ */
+
+:root {
+  /* ---------- COLORS ---------- */
+  /* Dominant: deep forest green (collegiate, trustworthy, not SaaS-blue) */
+  --color-primary: #1f3a2e;
+  --color-primary-soft: #2d5242;
+  --color-primary-tint: #e8ede9;
+
+  /* Accent: terracotta for CTAs and subject tags */
+  --color-accent: #c25a3e;
+  --color-accent-soft: #e8a58f;
+  --color-accent-tint: #f7e9e2;
+
+  /* Paper backgrounds — off-white, warm */
+  --color-paper: #faf6ef;
+  --color-paper-deep: #f2ebdd;
+  --color-card: #fffdf7;
+
+  /* Text */
+  --color-ink: #1a1a17;
+  --color-ink-soft: #4a4a44;
+  --color-ink-muted: #8a8a82;
+
+  /* Lines & borders */
+  --color-rule: #d9d1bf;
+  --color-rule-soft: #ebe4d4;
+
+  /* Status pills */
+  --color-status-available: #1f3a2e;
+  --color-status-available-bg: #e1ebe3;
+  --color-status-pending: #a36820;
+  --color-status-pending-bg: #f5e8d3;
+  --color-status-out: #8a2a2a;
+  --color-status-out-bg: #f0dcdc;
+
+  /* ---------- TYPOGRAPHY ---------- */
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Inter Tight', -apple-system, system-ui, sans-serif;
+
+  --fs-mega: clamp(3rem, 8vw, 6rem);
+  --fs-hero: clamp(2.25rem, 5vw, 4rem);
+  --fs-h1: clamp(2rem, 3.5vw, 2.75rem);
+  --fs-h2: clamp(1.5rem, 2.5vw, 2rem);
+  --fs-h3: 1.25rem;
+  --fs-body: 1rem;
+  --fs-small: 0.875rem;
+  --fs-tiny: 0.75rem;
+
+  /* ---------- SPACING ---------- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-24: 6rem;
+
+  /* ---------- LAYOUT ---------- */
+  --max-width: 1280px;
+  --gutter: clamp(1.25rem, 4vw, 3rem);
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+
+  /* ---------- MOTION ---------- */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-fast: 160ms;
+  --duration-base: 280ms;
+}

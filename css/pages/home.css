@@ -1,0 +1,252 @@
+/* ============================================================
+   HOME PAGE — editorial, asymmetric, warm
+   ============================================================ */
+
+/* ---------- HERO ---------- */
+.hero {
+  padding: var(--space-16) 0 var(--space-12);
+  position: relative;
+}
+.hero__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-12);
+  align-items: end;
+}
+@media (max-width: 900px) { .hero__grid { grid-template-columns: 1fr; gap: var(--space-8); } }
+
+.hero__headline {
+  font-size: var(--fs-mega);
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+  color: var(--color-primary);
+  font-weight: 400;
+}
+.hero__headline em {
+  font-style: italic;
+  font-weight: 300;
+  color: var(--color-accent);
+}
+.hero__lead {
+  font-size: 1.125rem;
+  line-height: 1.6;
+  color: var(--color-ink-soft);
+  max-width: 42ch;
+  margin-bottom: var(--space-6);
+}
+.hero__ctas {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* Bookmark ribbon in hero */
+.hero__ribbon {
+  position: absolute;
+  top: 0;
+  right: var(--gutter);
+  width: 48px;
+  height: 120px;
+  background: var(--color-accent);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%);
+  opacity: 0.85;
+}
+@media (max-width: 640px) { .hero__ribbon { display: none; } }
+
+/* ---------- STATS STRIP ---------- */
+.stats {
+  padding: var(--space-8) 0;
+  border-block: 1px solid var(--color-rule);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-8);
+  margin-top: var(--space-12);
+}
+@media (max-width: 640px) { .stats { grid-template-columns: 1fr; gap: var(--space-4); } }
+.stat__number {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  font-weight: 300;
+  line-height: 1;
+  color: var(--color-primary);
+  letter-spacing: -0.03em;
+}
+.stat__label {
+  font-size: var(--fs-tiny);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-ink-muted);
+  margin-top: var(--space-2);
+}
+
+/* ---------- HOW IT WORKS ---------- */
+.how {
+  padding: var(--space-16) 0;
+}
+.how__header {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-8);
+  align-items: end;
+  margin-bottom: var(--space-12);
+}
+@media (max-width: 720px) { .how__header { grid-template-columns: 1fr; } }
+.how__title {
+  font-size: var(--fs-h1);
+  color: var(--color-primary);
+}
+.how__intro {
+  color: var(--color-ink-soft);
+  max-width: 50ch;
+}
+
+/* Asymmetric steps — numbered, staggered */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-8);
+  counter-reset: step;
+}
+@media (max-width: 720px) { .steps { grid-template-columns: 1fr; } }
+.step {
+  counter-increment: step;
+  padding-top: var(--space-6);
+  border-top: 2px solid var(--color-primary);
+}
+.step:nth-child(2) { margin-top: var(--space-8); }
+.step:nth-child(3) { margin-top: var(--space-16); }
+@media (max-width: 720px) {
+  .step:nth-child(2), .step:nth-child(3) { margin-top: 0; }
+}
+.step__number {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 300;
+  color: var(--color-accent);
+  line-height: 1;
+  margin-bottom: var(--space-3);
+}
+.step__number::before { content: counter(step, decimal-leading-zero); }
+.step__title {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  margin-bottom: var(--space-2);
+  color: var(--color-ink);
+}
+.step__desc {
+  color: var(--color-ink-soft);
+  font-size: var(--fs-small);
+  line-height: 1.6;
+}
+
+/* ---------- ABOUT SECTION ---------- */
+.about-section {
+  padding: var(--space-16) 0;
+  background: var(--color-paper-deep);
+  position: relative;
+}
+.about-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(45deg, transparent 49.5%, var(--color-rule-soft) 49.5%, var(--color-rule-soft) 50.5%, transparent 50.5%);
+  background-size: 40px 40px;
+  opacity: 0.25;
+  pointer-events: none;
+}
+.about-section__inner {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: var(--space-12);
+  align-items: start;
+}
+@media (max-width: 900px) { .about-section__inner { grid-template-columns: 1fr; } }
+.about-section__title {
+  font-size: var(--fs-h1);
+  color: var(--color-primary);
+  position: sticky;
+  top: 120px;
+}
+.about-section__body p {
+  margin-bottom: var(--space-4);
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: var(--color-ink-soft);
+}
+.about-section__body p:first-child::first-letter {
+  font-family: var(--font-display);
+  font-size: 4rem;
+  float: left;
+  line-height: 0.9;
+  padding-right: var(--space-3);
+  padding-top: var(--space-1);
+  color: var(--color-accent);
+  font-weight: 400;
+}
+
+/* ---------- SUBJECTS STRIP ---------- */
+.subjects-strip {
+  padding: var(--space-16) 0;
+}
+.subjects-strip h2 {
+  font-size: var(--fs-h2);
+  color: var(--color-primary);
+  margin-bottom: var(--space-8);
+}
+.subjects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+.subject-card {
+  padding: var(--space-6);
+  background: var(--color-card);
+  border: 1px solid var(--color-rule-soft);
+  border-radius: var(--radius-sm);
+  transition: all var(--duration-base) var(--ease-out);
+  cursor: pointer;
+  display: block;
+}
+.subject-card:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+  box-shadow: 4px 6px 0 var(--color-primary);
+}
+.subject-card__name {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  color: var(--color-primary);
+  margin-bottom: var(--space-1);
+}
+.subject-card__count {
+  font-size: var(--fs-small);
+  color: var(--color-ink-muted);
+}
+
+/* ---------- CTA BANNER ---------- */
+.cta-banner {
+  margin-top: var(--space-16);
+  padding: var(--space-12);
+  background: var(--color-primary);
+  color: var(--color-paper);
+  border-radius: var(--radius-md);
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--space-8);
+  align-items: center;
+}
+@media (max-width: 720px) { .cta-banner { grid-template-columns: 1fr; padding: var(--space-8); } }
+.cta-banner h2 {
+  font-size: var(--fs-h1);
+  margin-bottom: var(--space-3);
+}
+.cta-banner p {
+  color: color-mix(in srgb, var(--color-paper) 80%, transparent);
+  font-size: var(--fs-small);
+}
+.cta-banner .btn--accent {
+  justify-self: end;
+}
+@media (max-width: 720px) { .cta-banner .btn--accent { justify-self: start; } }
