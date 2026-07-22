@@ -101,23 +101,6 @@
           <label for="req-course">Course Name and Number (e.g., MATH 101, HIST 210)</label>
           <input type="text" id="req-course" name="course" placeholder="MATH 101, HIST 210" required />
         </div>
-        <fieldset class="modal__field modal__field--choice">
-          <legend>Do you need a physical copy or an electronic version (if available)?</legend>
-          <div class="modal__choice-group">
-            <label class="modal__choice">
-              <input type="radio" name="format" value="Physical Copy" />
-              <span>Physical Copy</span>
-            </label>
-            <label class="modal__choice">
-              <input type="radio" name="format" value="Electronic/Digital Version" />
-              <span>Electronic/Digital Version</span>
-            </label>
-            <label class="modal__choice">
-              <input type="radio" name="format" value="Either/No Preference" checked />
-              <span>Either/No Preference</span>
-            </label>
-          </div>
-        </fieldset>
         <div class="modal__field">
           <label for="req-name">Your Name</label>
           <input type="text" id="req-name" name="name" required />
@@ -381,7 +364,6 @@
             bookIsbn: currentBook.isbn || '',
             bookAuthor: currentBook.author || '',
             course: formData.get('course') || '',
-            format: formData.get('format') || '',
             name: formData.get('name') || '',
             email: formData.get('email') || '',
             message: formData.get('message') || '',
@@ -403,7 +385,7 @@
 
       // Fallback: mailto
       const subject = `Book request: ${currentBook.title}`;
-      const body = `Book: ${currentBook.title}\nISBN: ${currentBook.isbn || 'None'}\nAuthor(s): ${currentBook.author || 'None'}\nSubject: ${currentBook.subject}\nCourse: ${formData.get('course') || 'None'}\nFormat Preference: ${formData.get('format') || 'None'}\nAvailability Rating: ${formData.get('availabilityRating') || 'None'}\n\nName: ${formData.get('name')}\nEmail: ${formData.get('email')}\n\nNotes: ${formData.get('message') || 'None'}`;
+      const body = `Book: ${currentBook.title}\nISBN: ${currentBook.isbn || 'None'}\nAuthor(s): ${currentBook.author || 'None'}\nSubject: ${currentBook.subject}\nCourse: ${formData.get('course') || 'None'}\nAvailability Rating: ${formData.get('availabilityRating') || 'None'}\n\nName: ${formData.get('name')}\nEmail: ${formData.get('email')}\n\nNotes: ${formData.get('message') || 'None'}`;
       window.location.href = `mailto:freetextbooklibrary@cofc.edu?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       toast('Opening your email — send the message to finish the request.');
       closeModal();
