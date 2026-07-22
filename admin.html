@@ -56,15 +56,15 @@
       <!-- STATS -->
       <div class="admin-grid">
         <div class="admin-stat">
-          <div class="admin-stat__label">Total Books</div>
+          <div class="admin-stat__label">Total Library Copies</div>
           <div class="admin-stat__value" data-stat-total>—</div>
         </div>
         <div class="admin-stat">
-          <div class="admin-stat__label">Available</div>
+          <div class="admin-stat__label">Copies Available</div>
           <div class="admin-stat__value" data-stat-available>—</div>
         </div>
         <div class="admin-stat">
-          <div class="admin-stat__label">Pending / Checked Out</div>
+          <div class="admin-stat__label">Currently Checked Out</div>
           <div class="admin-stat__value" data-stat-out>—</div>
         </div>
       </div>
@@ -118,12 +118,21 @@
         </div>
       </div>
 
-      <!-- RECENT REQUESTS -->
+      <!-- PENDING REQUESTS -->
       <div class="admin-section">
-        <h2>Recent book requests</h2>
-        <p>Recent student requests from Firestore. Review and contact students to fulfill requests.</p>
+        <h2>Pending requests</h2>
+        <p>When a student picks up a book, mark the request fulfilled. One copy will be removed from the book's available stock automatically.</p>
         <div data-requests-table>
           <div class="empty-state">No requests yet.</div>
+        </div>
+      </div>
+
+      <!-- CHECKED OUT BOOKS -->
+      <div class="admin-section">
+        <h2>Checked out</h2>
+        <p>Books currently with students. Mark a book returned to add one copy back to its available stock.</p>
+        <div data-checkouts-table>
+          <div class="empty-state">No books are checked out.</div>
         </div>
       </div>
     </section>
@@ -161,11 +170,12 @@
             <option value="Available">Available</option>
             <option value="Pending">Pending</option>
             <option value="Checked Out">Checked Out</option>
+            <option value="Unavailable">Unavailable</option>
           </select>
         </div>
         <div class="modal__field">
           <label for="book-quantity">Quantity *</label>
-          <input type="number" id="book-quantity" name="quantity" min="1" value="1" required />
+          <input type="number" id="book-quantity" name="quantity" min="0" value="1" required />
         </div>
         <div class="modal__actions">
           <button type="button" class="btn btn--ghost" data-book-modal-cancel>Cancel</button>
@@ -222,6 +232,7 @@
       setDoc,
       updateDoc,
       deleteDoc,
+      runTransaction,
       serverTimestamp
     } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
@@ -232,6 +243,7 @@
 
     let currentUser = null;
     let allBooks = [];
+    let allRequests = [];
     let editingBookDocId = null;
     let booksUnsubscribe = null;
     let requestsUnsubscribe = null;
@@ -376,10 +388,16 @@
 
       if (!requestsUnsubscribe) {
         requestsUnsubscribe = onSnapshot(collection(db, 'requests'), (snapshot) => {
-          renderRequests(snapshot.docs);
+          allRequests = snapshot.docs.map((requestDoc) => ({
+            docId: requestDoc.id,
+            ...requestDoc.data()
+          }));
+          renderRequests();
+          updateStats();
         }, (error) => {
           console.error('Error loading requests:', error);
           document.querySelector('[data-requests-table]').innerHTML = '<div class="empty-state">Error loading requests.</div>';
+          document.querySelector('[data-checkouts-table]').innerHTML = '<div class="empty-state">Error loading checked-out books.</div>';
         });
       }
     }
@@ -396,22 +414,42 @@
       }
     }
 
-    function renderRequests(requestDocs) {
-      const container = document.querySelector('[data-requests-table]');
-      const sortedRequests = [...requestDocs].sort((a, b) => {
-        const aTime = a.data().createdAt?.toMillis ? a.data().createdAt.toMillis() : 0;
-        const bTime = b.data().createdAt?.toMillis ? b.data().createdAt.toMillis() : 0;
+    function renderRequests() {
+      const pendingContainer = document.querySelector('[data-requests-table]');
+      const checkoutsContainer = document.querySelector('[data-checkouts-table]');
+      const sortedRequests = [...allRequests].sort((a, b) => {
+        const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+        const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
         return bTime - aTime;
-      }).slice(0, 10);
+      });
+      const pendingRequests = sortedRequests.filter((request) => !request.status || request.status === 'pending');
+      const checkedOutRequests = sortedRequests.filter((request) => request.status === 'fulfilled');
 
-      if (!sortedRequests.length) {
-        container.innerHTML = '<div class="empty-state">No requests yet.</div>';
-        return;
+      if (!pendingRequests.length) {
+        pendingContainer.innerHTML = '<div class="empty-state">No pending requests.</div>';
+      } else {
+        pendingContainer.innerHTML = buildRequestTable(pendingRequests, 'fulfill');
+        pendingContainer.querySelectorAll('[data-fulfill-request]').forEach((button) => {
+          button.addEventListener('click', () => handleFulfillRequest(button.dataset.fulfillRequest, button));
+        });
       }
 
-      const rows = sortedRequests.map((requestDoc) => {
-        const request = requestDoc.data();
+      if (!checkedOutRequests.length) {
+        checkoutsContainer.innerHTML = '<div class="empty-state">No books are checked out.</div>';
+      } else {
+        checkoutsContainer.innerHTML = buildRequestTable(checkedOutRequests, 'return');
+        checkoutsContainer.querySelectorAll('[data-return-request]').forEach((button) => {
+          button.addEventListener('click', () => handleReturnRequest(button.dataset.returnRequest, button));
+        });
+      }
+    }
+
+    function buildRequestTable(requests, action) {
+      const rows = requests.map((request) => {
         const date = request.createdAt?.toDate ? request.createdAt.toDate().toLocaleDateString() : 'N/A';
+        const actionButton = action === 'fulfill'
+          ? `<button class="btn btn--accent btn--small" data-fulfill-request="${escapeHtml(request.docId)}">Mark fulfilled</button>`
+          : `<button class="btn btn--ghost btn--small" data-return-request="${escapeHtml(request.docId)}">Mark returned</button>`;
         return `
           <tr>
             <td><strong>${escapeHtml(request.bookTitle || 'Unknown')}</strong></td>
@@ -419,18 +457,103 @@
             <td>${escapeHtml(request.email || 'N/A')}</td>
             <td>${escapeHtml(request.course || 'N/A')}</td>
             <td>${date}</td>
+            <td class="request-queue__action">${actionButton}</td>
           </tr>
         `;
       });
 
-      container.innerHTML = `
+      return `
         <table class="request-queue">
           <thead>
-            <tr><th>Book</th><th>Student</th><th>Email</th><th>Course</th><th>Date</th></tr>
+            <tr><th>Book</th><th>Student</th><th>Email</th><th>Course</th><th>Date</th><th>Action</th></tr>
           </thead>
           <tbody>${rows.join('')}</tbody>
         </table>
       `;
+    }
+
+    async function handleFulfillRequest(requestDocId, button) {
+      await updateLoan(requestDocId, 'fulfill', button);
+    }
+
+    async function handleReturnRequest(requestDocId, button) {
+      await updateLoan(requestDocId, 'return', button);
+    }
+
+    async function updateLoan(requestDocId, action, button) {
+      if (!db || !currentUser || button.disabled) return;
+
+      const originalLabel = button.textContent;
+      button.disabled = true;
+      button.textContent = action === 'fulfill' ? 'Fulfilling...' : 'Returning...';
+
+      try {
+        await runTransaction(db, async (transaction) => {
+          const requestRef = doc(db, 'requests', requestDocId);
+          const requestSnapshot = await transaction.get(requestRef);
+          if (!requestSnapshot.exists()) throw new Error('request-not-found');
+
+          const request = requestSnapshot.data();
+          const expectedStatus = action === 'fulfill' ? 'pending' : 'fulfilled';
+          const currentStatus = request.status || 'pending';
+          if (currentStatus !== expectedStatus) throw new Error('request-already-updated');
+
+          const matchingBook = allBooks.find((book) =>
+            book.docId === request.bookDocId || book.id === Number(request.bookId)
+          );
+          const bookDocId = request.bookDocId || matchingBook?.docId || String(request.bookId || '');
+          if (!bookDocId) throw new Error('book-not-found');
+
+          const bookRef = doc(db, 'books', bookDocId);
+          const bookSnapshot = await transaction.get(bookRef);
+          if (!bookSnapshot.exists()) throw new Error('book-not-found');
+
+          const book = bookSnapshot.data();
+          const quantity = Math.max(0, Number.parseInt(book.quantity, 10) || 0);
+
+          if (action === 'fulfill') {
+            if (quantity < 1) throw new Error('out-of-stock');
+            const nextQuantity = quantity - 1;
+            transaction.update(bookRef, {
+              quantity: nextQuantity,
+              status: nextQuantity === 0 ? 'Unavailable' : 'Available',
+              updatedAt: serverTimestamp()
+            });
+            transaction.update(requestRef, {
+              status: 'fulfilled',
+              bookDocId,
+              fulfilledAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
+            });
+          } else {
+            transaction.update(bookRef, {
+              quantity: quantity + 1,
+              status: 'Available',
+              updatedAt: serverTimestamp()
+            });
+            transaction.update(requestRef, {
+              status: 'returned',
+              returnedAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
+            });
+          }
+        });
+
+        toast(action === 'fulfill'
+          ? 'Request fulfilled. Inventory updated.'
+          : 'Book returned. One copy was added back to stock.');
+      } catch (error) {
+        console.error(`Could not ${action} request:`, error);
+        const messages = {
+          'out-of-stock': 'This book has no copies left. The request was not fulfilled.',
+          'book-not-found': 'The matching book could not be found in inventory.',
+          'request-not-found': 'That request no longer exists.',
+          'request-already-updated': 'That request was already updated by another volunteer.'
+        };
+        toast(messages[error.message] || 'Could not update the request. Please try again.');
+        button.disabled = false;
+        button.textContent = originalLabel;
+      }
     }
 
     function renderBooksTable() {
@@ -538,13 +661,14 @@
         return;
       }
 
+      const quantity = Math.max(0, parseInt(formData.get('quantity'), 10) || 0);
       const bookData = {
         title: String(formData.get('title') || '').trim(),
         isbn: String(formData.get('isbn') || '').trim(),
         author: String(formData.get('author') || '').trim(),
         subject,
-        status: formData.get('status'),
-        quantity: Math.max(1, parseInt(formData.get('quantity'), 10) || 1),
+        status: quantity === 0 ? 'Unavailable' : formData.get('status'),
+        quantity,
         updatedAt: serverTimestamp()
       };
 
@@ -608,10 +732,13 @@
     }
 
     function updateStats() {
-      const available = allBooks.filter(b => b.status === 'Available').length;
-      const out = allBooks.length - available;
+      const available = allBooks
+        .filter((book) => book.status === 'Available')
+        .reduce((sum, book) => sum + book.quantity, 0);
+      const out = allRequests.filter((request) => request.status === 'fulfilled').length;
+      const total = allBooks.reduce((sum, book) => sum + book.quantity, 0) + out;
 
-      document.querySelector('[data-stat-total]').textContent = allBooks.length;
+      document.querySelector('[data-stat-total]').textContent = total;
       document.querySelector('[data-stat-available]').textContent = available;
       document.querySelector('[data-stat-out]').textContent = out;
     }
@@ -666,7 +793,9 @@
         author: data.author || '',
         subject: data.subject || 'Uncategorized',
         status: data.status || 'Available',
-        quantity: Number.parseInt(data.quantity, 10) || 1
+        quantity: Number.isFinite(Number.parseInt(data.quantity, 10))
+          ? Math.max(0, Number.parseInt(data.quantity, 10))
+          : 1
       };
     }
 

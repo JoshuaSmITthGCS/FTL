@@ -249,15 +249,14 @@
         return;
       }
       body.innerHTML = filtered.map(b => {
-        const statusClass = b.status === 'Available' ? 'status--available'
-          : b.status === 'Pending' ? 'status--pending' : 'status--out';
-        const canRequest = b.status === 'Available';
+        const canRequest = b.status === 'Available' && b.quantity > 0;
+        const displayStatus = canRequest ? 'Available' : 'Unavailable';
         return `
           <tr>
             <td data-label="Title"><div class="book-title">${escapeHtml(b.title)}</div></td>
             <td data-label="Subject"><span class="tag">${escapeHtml(b.subject)}</span></td>
             <td data-label="ISBN"><span class="book-isbn">${escapeHtml(b.isbn || '—')}</span></td>
-            <td data-label="Status"><span class="status ${statusClass}">${b.status}</span></td>
+            <td data-label="Status"><span class="status ${canRequest ? 'status--available' : 'status--out'}">${displayStatus}</span></td>
             <td data-label="Action">
               <button class="request-btn" data-request-id="${b.id}" ${canRequest ? '' : 'disabled'}>
                 ${canRequest ? 'Request' : 'Unavailable'}
@@ -370,6 +369,7 @@
         if (db) {
           const requestData = {
             bookId: currentBook.id,
+            bookDocId: currentBook.docId || String(currentBook.id),
             bookTitle: currentBook.title || '',
             bookIsbn: currentBook.isbn || '',
             bookAuthor: currentBook.author || '',

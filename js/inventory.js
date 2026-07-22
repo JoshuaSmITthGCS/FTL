@@ -15,12 +15,15 @@ function normalizeBook(docSnap) {
   const parsedId = Number(data.id ?? docSnap.id);
 
   return {
+    docId: docSnap.id,
     id: Number.isFinite(parsedId) ? parsedId : 0,
     title: data.title || '',
     isbn: data.isbn || '',
     subject: data.subject || 'Uncategorized',
     status: data.status || 'Available',
-    quantity: Number.parseInt(data.quantity, 10) || 1,
+    quantity: Number.isFinite(Number.parseInt(data.quantity, 10))
+      ? Math.max(0, Number.parseInt(data.quantity, 10))
+      : 1,
     author: data.author || ''
   };
 }
@@ -50,7 +53,9 @@ export async function fetchInventory() {
   // Fallback: seed inventory
   try {
     const res = await fetch('data/seed-inventory.json');
-    const books = (await res.json()).sort(compareBooks);
+    const books = (await res.json())
+      .map((book) => ({ ...book, docId: String(book.id) }))
+      .sort(compareBooks);
     console.log(`✓ Loaded ${books.length} books from seed data (fallback)`);
     return books;
   } catch (e) {
@@ -72,7 +77,7 @@ export function groupBySubject(books) {
 export function filterBooks(books, { search = '', subjects = [], availableOnly = false } = {}) {
   const q = search.trim().toLowerCase();
   return books.filter(b => {
-    if (availableOnly && b.status !== 'Available') return false;
+    if (availableOnly && (b.status !== 'Available' || b.quantity < 1)) return false;
     if (subjects.length && !subjects.includes(b.subject)) return false;
     if (q) {
       const hay = `${b.title} ${b.isbn} ${b.author || ''}`.toLowerCase();

@@ -18,7 +18,7 @@ service cloud.firestore {
 
     // Requests collection - public create, admin-only read/update
     match /requests/{requestId} {
-      allow create: if true;  // Anyone can create requests
+      allow create: if request.resource.data.status == 'pending';
       allow read, update, delete: if isAdmin();
     }
 

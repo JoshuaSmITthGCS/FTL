@@ -57,6 +57,8 @@ free-textbook-library/
 
 **Requests in Firestore.** The catalog writes student requests to the `requests` collection. If Firebase is unavailable, it falls back to a pre-filled email.
 
+**Atomic checkout and return flow.** Admins mark pending requests fulfilled to decrement the matching book's available quantity. Fulfilled requests appear under Checked Out; marking one returned restores a copy. Firestore transactions keep the request and inventory changes in sync.
+
 **Firebase admin authentication.** The admin form signs in through Firebase Authentication, then verifies the user's matching Firestore admin document before showing the dashboard.
 
 ## Design tokens

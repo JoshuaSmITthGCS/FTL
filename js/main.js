@@ -5,6 +5,8 @@ export function toast(message, duration = 3000) {
   if (!el) {
     el = document.createElement('div');
     el.className = 'toast';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
     document.body.appendChild(el);
   }
   el.textContent = message;
