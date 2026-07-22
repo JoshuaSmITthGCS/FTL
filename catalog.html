@@ -93,7 +93,7 @@
   <div class="modal-backdrop" data-modal>
     <div class="modal">
       <h3>Book Request — Free Textbook Library</h3>
-      <p class="modal__intro">Please use this form to request a textbook from the Free Textbook Library. We will contact you once the book is available.</p>
+      <p class="modal__intro">Please use this form to request a textbook from the Free Textbook Library. A student volunteer will contact you once the book is ready for pick-up.</p>
       <div class="modal__book" data-modal-book></div>
 
       <form data-request-form>
@@ -193,7 +193,7 @@
       </div>
       <div class="site-footer__legal">
         <span>© 2026 Free Textbook Library at the College of Charleston. A student-run initiative.</span>
-        <span>Stern Student Center, College of Charleston · Mon–Fri · 10am–4pm</span>
+        <span>Center for Sustainable Development, 207 Calhoun St., College of Charleston · Mon–Thurs · 9am–5pm</span>
       </div>
     </div>
   </footer>
@@ -392,7 +392,7 @@
           };
 
           await addDoc(collection(db, 'requests'), requestData);
-          toast('✓ Request sent successfully! A volunteer will email you within 48 hours.');
+          toast('✓ Request sent successfully! A volunteer will email you within 48-72 hours.');
           closeModal();
           return;
         }
