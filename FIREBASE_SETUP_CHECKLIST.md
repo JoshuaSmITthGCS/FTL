@@ -27,7 +27,7 @@ Use this checklist to complete the Firebase migration. Each step must be complet
 ### ☐ 1.4 Create Admin User
 - [ ] Authentication → Users tab → Add user
 - [ ] Email: `admin@freetextbooklibrary.local`
-- [ ] Password: `admin` (or change to your preferred password)
+- [ ] Password: `Textbook2024` (or change to your preferred password)
 - [ ] **Copy the User UID** (you'll need it in step 1.6)
 - [ ] **Note:** Login form only shows password field; email is fixed internally
 
