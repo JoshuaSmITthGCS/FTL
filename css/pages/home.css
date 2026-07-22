@@ -240,6 +240,7 @@
 @media (max-width: 720px) { .cta-banner { grid-template-columns: 1fr; padding: var(--space-8); } }
 .cta-banner h2 {
   font-size: var(--fs-h1);
+  color: var(--color-ink);
   margin-bottom: var(--space-3);
 }
 .cta-banner p {
