@@ -201,6 +201,13 @@
 .request-queue__action {
   text-align: right;
 }
+.quantity-fraction {
+  display: inline-block;
+  min-width: 3.5rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
 
 /* ---------- ADMIN MODAL ---------- */
 .modal-backdrop {

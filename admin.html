@@ -174,8 +174,14 @@
           </select>
         </div>
         <div class="modal__field">
-          <label for="book-quantity">Quantity *</label>
+          <label for="book-quantity">Available copies *</label>
           <input type="number" id="book-quantity" name="quantity" min="0" value="1" required />
+          <p class="modal__hint">Copies currently on the shelf and available to request.</p>
+        </div>
+        <div class="modal__field">
+          <label for="book-total-quantity">Total copies *</label>
+          <input type="number" id="book-total-quantity" name="totalQuantity" min="0" value="1" required />
+          <p class="modal__hint">All copies owned by the library, including checked-out copies.</p>
         </div>
         <div class="modal__actions">
           <button type="button" class="btn btn--ghost" data-book-modal-cancel>Cancel</button>
@@ -296,6 +302,11 @@
       document.querySelector('[data-book-modal-cancel]').addEventListener('click', closeBookModal);
       document.querySelector('[data-book-subject-select]').addEventListener('change', handleSubjectSelectionChange);
       document.querySelector('[data-book-form]').addEventListener('submit', handleBookFormSubmit);
+      document.querySelector('[data-book-form]').addEventListener('input', (event) => {
+        if (event.target.matches('[name="quantity"], [name="totalQuantity"]')) {
+          document.querySelector('[name="totalQuantity"]').setCustomValidity('');
+        }
+      });
       document.querySelector('[data-book-modal]').addEventListener('click', (event) => {
         if (event.target === event.currentTarget) {
           closeBookModal();
@@ -393,6 +404,7 @@
             ...requestDoc.data()
           }));
           renderRequests();
+          renderBooksTable();
           updateStats();
         }, (error) => {
           console.error('Error loading requests:', error);
@@ -510,12 +522,18 @@
 
           const book = bookSnapshot.data();
           const quantity = Math.max(0, Number.parseInt(book.quantity, 10) || 0);
+          const activeCheckouts = countCheckedOutForBook(bookDocId, request.bookId);
+          const storedTotal = Number.parseInt(book.totalQuantity, 10);
+          const totalQuantity = Number.isFinite(storedTotal)
+            ? Math.max(quantity + activeCheckouts, storedTotal)
+            : quantity + activeCheckouts;
 
           if (action === 'fulfill') {
             if (quantity < 1) throw new Error('out-of-stock');
             const nextQuantity = quantity - 1;
             transaction.update(bookRef, {
               quantity: nextQuantity,
+              totalQuantity,
               status: nextQuantity === 0 ? 'Unavailable' : 'Available',
               updatedAt: serverTimestamp()
             });
@@ -528,6 +546,7 @@
           } else {
             transaction.update(bookRef, {
               quantity: quantity + 1,
+              totalQuantity: Math.max(totalQuantity, quantity + 1),
               status: 'Available',
               updatedAt: serverTimestamp()
             });
@@ -556,6 +575,15 @@
       }
     }
 
+    function countCheckedOutForBook(bookDocId, numericBookId) {
+      return allRequests.filter((request) =>
+        request.status === 'fulfilled' && (
+          request.bookDocId === bookDocId ||
+          Number(request.bookId) === Number(numericBookId)
+        )
+      ).length;
+    }
+
     function renderBooksTable() {
       const container = document.querySelector('[data-books-table]');
       if (!allBooks.length) {
@@ -573,7 +601,7 @@
             <td style="font-family: monospace; font-size: 0.85em;">${escapeHtml(b.isbn || '—')}</td>
             <td>${escapeHtml(b.author || '—')}</td>
             <td><span class="status ${statusClass}">${b.status}</span></td>
-            <td>${b.quantity || 1}</td>
+            <td><span class="quantity-fraction" aria-label="${b.quantity} available out of ${getTotalQuantity(b)} total">${b.quantity} / ${getTotalQuantity(b)}</span></td>
             <td style="text-align: right;">
               <button class="btn btn--ghost btn--small" data-edit-book="${escapeHtml(b.docId)}">Edit</button>
               <button class="btn btn--ghost btn--small" data-delete-book="${escapeHtml(b.docId)}">Delete</button>
@@ -585,7 +613,7 @@
       container.innerHTML = `
         <table class="request-queue">
           <thead>
-            <tr><th>Title</th><th>Subject</th><th>ISBN</th><th>Author</th><th>Status</th><th>Qty</th><th style="text-align: right;">Actions</th></tr>
+            <tr><th>Title</th><th>Subject</th><th>ISBN</th><th>Author</th><th>Status</th><th>Available / Total</th><th style="text-align: right;">Actions</th></tr>
           </thead>
           <tbody>${rows}</tbody>
         </table>
@@ -609,6 +637,7 @@
       form.reset();
       form.querySelector('[name="status"]').value = 'Available';
       form.querySelector('[name="quantity"]').value = 1;
+      form.querySelector('[name="totalQuantity"]').value = 1;
       setSubjectSelection('Uncategorized');
       document.querySelector('[data-book-modal]').classList.add('show');
     }
@@ -626,7 +655,8 @@
       form.querySelector('[name="isbn"]').value = book.isbn || '';
       form.querySelector('[name="author"]').value = book.author || '';
       form.querySelector('[name="status"]').value = book.status || 'Available';
-      form.querySelector('[name="quantity"]').value = book.quantity || 1;
+      form.querySelector('[name="quantity"]').value = book.quantity;
+      form.querySelector('[name="totalQuantity"]').value = getTotalQuantity(book);
 
       setSubjectSelection(book.subject || 'Uncategorized');
       document.querySelector('[data-book-modal]').classList.add('show');
@@ -662,6 +692,26 @@
       }
 
       const quantity = Math.max(0, parseInt(formData.get('quantity'), 10) || 0);
+      const totalQuantityInput = e.target.querySelector('[name="totalQuantity"]');
+      const totalQuantity = Math.max(0, parseInt(formData.get('totalQuantity'), 10) || 0);
+      const editingBook = allBooks.find((book) => book.docId === editingBookDocId);
+      const checkedOutCount = editingBook
+        ? countCheckedOutForBook(editingBook.docId, editingBook.id)
+        : 0;
+      const minimumTotal = quantity + checkedOutCount;
+
+      if (totalQuantity < minimumTotal) {
+        const checkedOutMessage = checkedOutCount
+          ? ` Total copies must include the ${checkedOutCount} currently checked out.`
+          : '';
+        totalQuantityInput.setCustomValidity(`Total copies cannot be less than available copies.${checkedOutMessage}`);
+        totalQuantityInput.reportValidity();
+        submitButton.disabled = false;
+        submitButton.textContent = 'Save';
+        return;
+      }
+      totalQuantityInput.setCustomValidity('');
+
       const bookData = {
         title: String(formData.get('title') || '').trim(),
         isbn: String(formData.get('isbn') || '').trim(),
@@ -669,6 +719,7 @@
         subject,
         status: quantity === 0 ? 'Unavailable' : formData.get('status'),
         quantity,
+        totalQuantity,
         updatedAt: serverTimestamp()
       };
 
@@ -736,7 +787,7 @@
         .filter((book) => book.status === 'Available')
         .reduce((sum, book) => sum + book.quantity, 0);
       const out = allRequests.filter((request) => request.status === 'fulfilled').length;
-      const total = allBooks.reduce((sum, book) => sum + book.quantity, 0) + out;
+      const total = allBooks.reduce((sum, book) => sum + getTotalQuantity(book), 0);
 
       document.querySelector('[data-stat-total]').textContent = total;
       document.querySelector('[data-stat-available]').textContent = available;
@@ -784,6 +835,9 @@
     function normalizeBookSnapshot(bookDoc) {
       const data = bookDoc.data();
       const parsedId = Number(data.id ?? bookDoc.id);
+      const parsedQuantity = Number.parseInt(data.quantity, 10);
+      const quantity = Number.isFinite(parsedQuantity) ? Math.max(0, parsedQuantity) : 1;
+      const parsedTotalQuantity = Number.parseInt(data.totalQuantity, 10);
 
       return {
         docId: bookDoc.id,
@@ -793,10 +847,16 @@
         author: data.author || '',
         subject: data.subject || 'Uncategorized',
         status: data.status || 'Available',
-        quantity: Number.isFinite(Number.parseInt(data.quantity, 10))
-          ? Math.max(0, Number.parseInt(data.quantity, 10))
-          : 1
+        quantity,
+        totalQuantity: Number.isFinite(parsedTotalQuantity)
+          ? Math.max(quantity, parsedTotalQuantity)
+          : quantity
       };
+    }
+
+    function getTotalQuantity(book) {
+      const activeCheckouts = countCheckedOutForBook(book.docId, book.id);
+      return Math.max(book.totalQuantity || 0, book.quantity + activeCheckouts);
     }
 
     function compareBooks(a, b) {

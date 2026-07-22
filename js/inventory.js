@@ -13,6 +13,9 @@ import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.0/
 function normalizeBook(docSnap) {
   const data = docSnap.data();
   const parsedId = Number(data.id ?? docSnap.id);
+  const parsedQuantity = Number.parseInt(data.quantity, 10);
+  const quantity = Number.isFinite(parsedQuantity) ? Math.max(0, parsedQuantity) : 1;
+  const parsedTotalQuantity = Number.parseInt(data.totalQuantity, 10);
 
   return {
     docId: docSnap.id,
@@ -21,9 +24,10 @@ function normalizeBook(docSnap) {
     isbn: data.isbn || '',
     subject: data.subject || 'Uncategorized',
     status: data.status || 'Available',
-    quantity: Number.isFinite(Number.parseInt(data.quantity, 10))
-      ? Math.max(0, Number.parseInt(data.quantity, 10))
-      : 1,
+    quantity,
+    totalQuantity: Number.isFinite(parsedTotalQuantity)
+      ? Math.max(quantity, parsedTotalQuantity)
+      : quantity,
     author: data.author || ''
   };
 }
@@ -54,7 +58,11 @@ export async function fetchInventory() {
   try {
     const res = await fetch('data/seed-inventory.json');
     const books = (await res.json())
-      .map((book) => ({ ...book, docId: String(book.id) }))
+      .map((book) => ({
+        ...book,
+        docId: String(book.id),
+        totalQuantity: book.totalQuantity ?? book.quantity
+      }))
       .sort(compareBooks);
     console.log(`✓ Loaded ${books.length} books from seed data (fallback)`);
     return books;
