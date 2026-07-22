@@ -96,7 +96,12 @@
       <p class="modal__intro">Please use this form to request a textbook from the Free Textbook Library. A student volunteer will contact you once the book is ready for pick-up.</p>
       <div class="modal__book" data-modal-book></div>
 
-      <form data-request-form>
+      <form name="book-request" method="POST" data-netlify="true" data-request-form>
+        <input type="hidden" name="form-name" value="book-request" />
+        <input type="hidden" name="bookTitle" />
+        <input type="hidden" name="bookIsbn" />
+        <input type="hidden" name="bookAuthor" />
+        <input type="hidden" name="bookSubject" />
         <div class="modal__field">
           <label for="req-course">Course Name and Number (e.g., MATH 101, HIST 210)</label>
           <input type="text" id="req-course" name="course" placeholder="MATH 101, HIST 210" required />
@@ -325,7 +330,7 @@
       document.querySelector('[data-modal-cancel]').addEventListener('click', closeModal);
       modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
 
-      // Form submit → Google Form
+      // Save to Firestore and submit the same form to Netlify for email notification.
       document.querySelector('[data-request-form]').addEventListener('submit', e => {
         e.preventDefault();
         submitRequest(new FormData(e.target));
@@ -334,6 +339,11 @@
 
     function openModal(book) {
       currentBook = book;
+      const form = document.querySelector('[data-request-form]');
+      form.elements.bookTitle.value = book.title || '';
+      form.elements.bookIsbn.value = book.isbn || '';
+      form.elements.bookAuthor.value = book.author || '';
+      form.elements.bookSubject.value = book.subject || '';
       document.querySelector('[data-modal-book]').innerHTML = `
         <strong>${escapeHtml(book.title)}</strong>
         ${book.author ? `<div>Author: ${escapeHtml(book.author)}</div>` : ''}
@@ -374,6 +384,7 @@
           };
 
           await addDoc(collection(db, 'requests'), requestData);
+          await submitToNetlify(formData);
           toast('✓ Request sent successfully! A volunteer will email you within 48-72 hours.');
           closeModal();
           return;
@@ -391,6 +402,18 @@
       closeModal();
       submitBtn.disabled = false;
       submitBtn.textContent = 'Send request';
+    }
+
+    async function submitToNetlify(formData) {
+      const response = await fetch('/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(formData).toString()
+      });
+
+      if (!response.ok) {
+        throw new Error(`Netlify form submission failed (${response.status})`);
+      }
     }
 
     function escapeHtml(str) {
