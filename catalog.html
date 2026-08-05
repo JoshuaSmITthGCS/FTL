@@ -33,7 +33,7 @@
       <div class="container">
         <div class="eyebrow">Browse · Search · Request</div>
         <h1>The Catalog</h1>
-        <p>Every book currently on our shelf. Updated weekly by volunteers. Use the filters on the left to narrow by subject or search by title, author, or ISBN.</p>
+        <p>Every book currently on our shelf. Updated weekly by volunteers. Use the filters on the left to narrow by subject or search by title, author, edition, or ISBN.</p>
         <div class="catalog-meta">
           <div class="catalog-meta__count" data-count>—</div>
           <div class="catalog-meta__updated">Updated from live inventory</div>
@@ -47,7 +47,7 @@
         <aside class="filters">
           <div class="filters__group">
             <h3>Search</h3>
-            <input type="text" class="filters__search" placeholder="Title, ISBN, author…" data-search />
+            <input type="search" class="filters__search" placeholder="Title, edition, ISBN, author…" aria-label="Search the catalog" data-search />
           </div>
 
           <div class="filters__group">
@@ -73,6 +73,7 @@
               <thead>
                 <tr>
                   <th data-sort="title">Title</th>
+                  <th data-sort="edition">Edition</th>
                   <th data-sort="subject">Subject</th>
                   <th data-sort="isbn">ISBN</th>
                   <th data-sort="status">Status</th>
@@ -80,7 +81,7 @@
                 </tr>
               </thead>
               <tbody data-table-body data-empty-message="No books match those filters. Try clearing a filter or broadening your search.">
-                <tr><td colspan="5" class="empty-state">Loading catalog…</td></tr>
+                <tr><td colspan="6" class="empty-state">Loading catalog…</td></tr>
               </tbody>
             </table>
           </div>
@@ -101,6 +102,7 @@
         <input type="hidden" name="bookTitle" />
         <input type="hidden" name="bookIsbn" />
         <input type="hidden" name="bookAuthor" />
+        <input type="hidden" name="bookEdition" />
         <input type="hidden" name="bookSubject" />
         <div class="modal__field">
           <label for="req-course">Course Name and Number (e.g., MATH 101, HIST 210)</label>
@@ -160,7 +162,7 @@
       <div class="site-footer__grid">
         <div>
           <div class="site-footer__brand">Free Textbook Library</div>
-          <p class="site-footer__tagline">A volunteer-run lending library for College of Charleston students. Free access, no fees, no questions.</p>
+          <p class="site-footer__tagline">A volunteer-run free textbook library for College of Charleston students. Free access, no fees, no questions.</p>
         </div>
         <div class="site-footer__col">
           <h4>Navigate</h4>
@@ -245,7 +247,7 @@
     function renderTable() {
       const body = document.querySelector('[data-table-body]');
       if (!filtered.length) {
-        body.innerHTML = `<tr><td colspan="5" class="empty-state">${body.dataset.emptyMessage}</td></tr>`;
+        body.innerHTML = `<tr><td colspan="6" class="empty-state">${body.dataset.emptyMessage}</td></tr>`;
         return;
       }
       body.innerHTML = filtered.map(b => {
@@ -254,6 +256,7 @@
         return `
           <tr>
             <td data-label="Title"><div class="book-title">${escapeHtml(b.title)}</div></td>
+            <td data-label="Edition">${escapeHtml(formatEdition(b.edition))}</td>
             <td data-label="Subject"><span class="tag">${escapeHtml(b.subject)}</span></td>
             <td data-label="ISBN"><span class="book-isbn">${escapeHtml(b.isbn || '—')}</span></td>
             <td data-label="Status"><span class="status ${canRequest ? 'status--available' : 'status--out'}">${displayStatus}</span></td>
@@ -342,10 +345,12 @@
       form.elements.bookTitle.value = book.title || '';
       form.elements.bookIsbn.value = book.isbn || '';
       form.elements.bookAuthor.value = book.author || '';
+      form.elements.bookEdition.value = book.edition || '';
       form.elements.bookSubject.value = book.subject || '';
       document.querySelector('[data-modal-book]').innerHTML = `
         <strong>${escapeHtml(book.title)}</strong>
         ${book.author ? `<div>Author: ${escapeHtml(book.author)}</div>` : ''}
+        <div>Edition: ${escapeHtml(formatEdition(book.edition))}</div>
         <div>${escapeHtml(book.subject)} · ISBN ${escapeHtml(book.isbn || 'n/a')}</div>
       `;
       document.querySelector('[data-modal]').classList.add('show');
@@ -373,6 +378,8 @@
             bookTitle: currentBook.title || '',
             bookIsbn: currentBook.isbn || '',
             bookAuthor: currentBook.author || '',
+            bookEdition: currentBook.edition || '',
+            bookSubject: currentBook.subject || 'Uncategorized',
             course: formData.get('course') || '',
             name: formData.get('name') || '',
             email: formData.get('email') || '',
@@ -396,7 +403,7 @@
 
       // Fallback: mailto
       const subject = `Book request: ${currentBook.title}`;
-      const body = `Book: ${currentBook.title}\nISBN: ${currentBook.isbn || 'None'}\nAuthor(s): ${currentBook.author || 'None'}\nSubject: ${currentBook.subject}\nCourse: ${formData.get('course') || 'None'}\nAvailability Rating: ${formData.get('availabilityRating') || 'None'}\n\nName: ${formData.get('name')}\nEmail: ${formData.get('email')}\n\nNotes: ${formData.get('message') || 'None'}`;
+      const body = `Book: ${currentBook.title}\nEdition: ${formatEdition(currentBook.edition)}\nISBN: ${currentBook.isbn || 'None'}\nAuthor(s): ${currentBook.author || 'None'}\nSubject: ${currentBook.subject}\nCourse: ${formData.get('course') || 'None'}\nAvailability Rating: ${formData.get('availabilityRating') || 'None'}\n\nName: ${formData.get('name')}\nEmail: ${formData.get('email')}\n\nNotes: ${formData.get('message') || 'None'}`;
       window.location.href = `mailto:freetextbooklibrary@cofc.edu?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       toast('Opening your email — send the message to finish the request.');
       closeModal();
@@ -420,6 +427,12 @@
       return String(str ?? '').replace(/[&<>"']/g, c => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
       }[c]));
+    }
+
+    function formatEdition(edition) {
+      const value = String(edition || '').trim();
+      if (!value) return 'Not listed';
+      return /edition|\bed\.?$/i.test(value) ? value : `${value} edition`;
     }
   </script>
 </body>

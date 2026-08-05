@@ -1,7 +1,7 @@
 {
   "name": "free-textbook-library",
   "version": "1.0.0",
-  "description": "Free Textbook Library - Student-run lending library with Firebase backend",
+  "description": "Free Textbook Library - Student-run textbook giveaway library with Firebase backend",
   "private": true,
   "type": "module",
   "scripts": {

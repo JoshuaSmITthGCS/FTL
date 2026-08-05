@@ -89,9 +89,11 @@ async function main() {
       id: book.id,
       title: book.title,
       isbn: book.isbn || '',
+      edition: book.edition || '',
       subject: book.subject || 'Uncategorized',
       status: book.status || 'Available',
       quantity: book.quantity || 1,
+      totalQuantity: book.totalQuantity || book.quantity || 1,
       author: book.author || '',
       createdAt: timestamp,
       updatedAt: timestamp

@@ -56,7 +56,7 @@
       <!-- STATS -->
       <div class="admin-grid">
         <div class="admin-stat">
-          <div class="admin-stat__label">Total Library Copies</div>
+          <div class="admin-stat__label">Copies Recorded</div>
           <div class="admin-stat__value" data-stat-total>—</div>
         </div>
         <div class="admin-stat">
@@ -64,7 +64,7 @@
           <div class="admin-stat__value" data-stat-available>—</div>
         </div>
         <div class="admin-stat">
-          <div class="admin-stat__label">Currently Checked Out</div>
+          <div class="admin-stat__label">Copies Given</div>
           <div class="admin-stat__value" data-stat-out>—</div>
         </div>
       </div>
@@ -121,18 +121,32 @@
       <!-- PENDING REQUESTS -->
       <div class="admin-section">
         <h2>Pending requests</h2>
-        <p>When a student picks up a book, mark the request fulfilled. One copy will be removed from the book's available stock automatically.</p>
+        <p>When a student picks up a book, mark one copy given. The copy leaves the available inventory permanently and the student is added to the usage report.</p>
         <div data-requests-table>
           <div class="empty-state">No requests yet.</div>
         </div>
       </div>
 
-      <!-- CHECKED OUT BOOKS -->
+      <!-- COPIES GIVEN -->
       <div class="admin-section">
-        <h2>Checked out</h2>
-        <p>Books currently with students. Mark a book returned to add one copy back to its available stock.</p>
-        <div data-checkouts-table>
-          <div class="empty-state">No books are checked out.</div>
+        <h2>Copies given</h2>
+        <p>A permanent history of books students received. These copies are not expected back.</p>
+        <div data-given-table>
+          <div class="empty-state">No copies have been given yet.</div>
+        </div>
+      </div>
+
+      <!-- USAGE REPORTING -->
+      <div class="admin-section">
+        <div class="admin-section__header">
+          <div>
+            <h2>Subject usage</h2>
+            <p>See which subjects students take most, based on copies marked given.</p>
+          </div>
+          <button type="button" class="btn btn--ghost" data-export-usage>Export usage CSV</button>
+        </div>
+        <div data-subject-usage>
+          <div class="empty-state">No usage data yet.</div>
         </div>
       </div>
     </section>
@@ -156,6 +170,11 @@
           <input type="text" id="book-author" name="author" />
         </div>
         <div class="modal__field">
+          <label for="book-edition">Edition</label>
+          <input type="text" id="book-edition" name="edition" placeholder="e.g., 4th" />
+          <p class="modal__hint">Students will see this in the public catalog.</p>
+        </div>
+        <div class="modal__field">
           <label for="book-subject-select">Subject *</label>
           <select id="book-subject-select" data-book-subject-select required></select>
           <p class="modal__hint">Choose an existing subject or select "Add new subject..." to create one.</p>
@@ -169,7 +188,6 @@
           <select id="book-status" name="status" required>
             <option value="Available">Available</option>
             <option value="Pending">Pending</option>
-            <option value="Checked Out">Checked Out</option>
             <option value="Unavailable">Unavailable</option>
           </select>
         </div>
@@ -181,7 +199,7 @@
         <div class="modal__field">
           <label for="book-total-quantity">Total copies *</label>
           <input type="number" id="book-total-quantity" name="totalQuantity" min="0" value="1" required />
-          <p class="modal__hint">All copies owned by the library, including checked-out copies.</p>
+          <p class="modal__hint">All copies recorded for this title, including copies already given to students.</p>
         </div>
         <div class="modal__actions">
           <button type="button" class="btn btn--ghost" data-book-modal-cancel>Cancel</button>
@@ -196,7 +214,7 @@
       <div class="site-footer__grid">
         <div>
           <div class="site-footer__brand">Free Textbook Library</div>
-          <p class="site-footer__tagline">A volunteer-run lending library for College of Charleston students. Free access, no fees, no questions.</p>
+          <p class="site-footer__tagline">A volunteer-run free textbook library for College of Charleston students. Free access, no fees, no questions.</p>
         </div>
         <div class="site-footer__col">
           <h4>Navigate</h4>
@@ -302,6 +320,7 @@
       document.querySelector('[data-book-modal-cancel]').addEventListener('click', closeBookModal);
       document.querySelector('[data-book-subject-select]').addEventListener('change', handleSubjectSelectionChange);
       document.querySelector('[data-book-form]').addEventListener('submit', handleBookFormSubmit);
+      document.querySelector('[data-export-usage]').addEventListener('click', exportUsageCsv);
       document.querySelector('[data-book-form]').addEventListener('input', (event) => {
         if (event.target.matches('[name="quantity"], [name="totalQuantity"]')) {
           document.querySelector('[name="totalQuantity"]').setCustomValidity('');
@@ -389,6 +408,7 @@
 
           renderBooksTable();
           updateStats();
+          renderSubjectUsage();
           refreshSubjectOptions(getCurrentSubjectValue());
         }, (error) => {
           console.error('Error loading books:', error);
@@ -409,7 +429,8 @@
         }, (error) => {
           console.error('Error loading requests:', error);
           document.querySelector('[data-requests-table]').innerHTML = '<div class="empty-state">Error loading requests.</div>';
-          document.querySelector('[data-checkouts-table]').innerHTML = '<div class="empty-state">Error loading checked-out books.</div>';
+          document.querySelector('[data-given-table]').innerHTML = '<div class="empty-state">Error loading copies given.</div>';
+          document.querySelector('[data-subject-usage]').innerHTML = '<div class="empty-state">Error loading usage data.</div>';
         });
       }
     }
@@ -428,43 +449,44 @@
 
     function renderRequests() {
       const pendingContainer = document.querySelector('[data-requests-table]');
-      const checkoutsContainer = document.querySelector('[data-checkouts-table]');
+      const givenContainer = document.querySelector('[data-given-table]');
       const sortedRequests = [...allRequests].sort((a, b) => {
         const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
         const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
         return bTime - aTime;
       });
       const pendingRequests = sortedRequests.filter((request) => !request.status || request.status === 'pending');
-      const checkedOutRequests = sortedRequests.filter((request) => request.status === 'fulfilled');
+      const givenRequests = sortedRequests.filter(isGivenRequest);
 
       if (!pendingRequests.length) {
         pendingContainer.innerHTML = '<div class="empty-state">No pending requests.</div>';
       } else {
-        pendingContainer.innerHTML = buildRequestTable(pendingRequests, 'fulfill');
-        pendingContainer.querySelectorAll('[data-fulfill-request]').forEach((button) => {
-          button.addEventListener('click', () => handleFulfillRequest(button.dataset.fulfillRequest, button));
+        pendingContainer.innerHTML = buildRequestTable(pendingRequests, true);
+        pendingContainer.querySelectorAll('[data-give-request]').forEach((button) => {
+          button.addEventListener('click', () => handleGiveRequest(button.dataset.giveRequest, button));
         });
       }
 
-      if (!checkedOutRequests.length) {
-        checkoutsContainer.innerHTML = '<div class="empty-state">No books are checked out.</div>';
+      if (!givenRequests.length) {
+        givenContainer.innerHTML = '<div class="empty-state">No copies have been given yet.</div>';
       } else {
-        checkoutsContainer.innerHTML = buildRequestTable(checkedOutRequests, 'return');
-        checkoutsContainer.querySelectorAll('[data-return-request]').forEach((button) => {
-          button.addEventListener('click', () => handleReturnRequest(button.dataset.returnRequest, button));
-        });
+        givenContainer.innerHTML = buildRequestTable(givenRequests, false);
       }
+
+      renderSubjectUsage();
     }
 
-    function buildRequestTable(requests, action) {
+    function buildRequestTable(requests, showAction) {
       const rows = requests.map((request) => {
-        const date = request.createdAt?.toDate ? request.createdAt.toDate().toLocaleDateString() : 'N/A';
-        const actionButton = action === 'fulfill'
-          ? `<button class="btn btn--accent btn--small" data-fulfill-request="${escapeHtml(request.docId)}">Mark fulfilled</button>`
-          : `<button class="btn btn--ghost btn--small" data-return-request="${escapeHtml(request.docId)}">Mark returned</button>`;
+        const timestamp = showAction ? request.createdAt : (request.givenAt || request.fulfilledAt || request.createdAt);
+        const date = formatDate(timestamp);
+        const actionButton = showAction
+          ? `<button class="btn btn--accent btn--small" data-give-request="${escapeHtml(request.docId)}">Mark copy given</button>`
+          : '<span class="status status--available">Given</span>';
         return `
           <tr>
             <td><strong>${escapeHtml(request.bookTitle || 'Unknown')}</strong></td>
+            <td>${escapeHtml(formatEdition(getRequestBookValue(request, 'bookEdition', 'edition')))}</td>
             <td>${escapeHtml(request.name || 'N/A')}</td>
             <td>${escapeHtml(request.email || 'N/A')}</td>
             <td>${escapeHtml(request.course || 'N/A')}</td>
@@ -477,27 +499,19 @@
       return `
         <table class="request-queue">
           <thead>
-            <tr><th>Book</th><th>Student</th><th>Email</th><th>Course</th><th>Date</th><th>Action</th></tr>
+            <tr><th>Book</th><th>Edition</th><th>Student</th><th>Email</th><th>Course</th><th>Date</th><th>${showAction ? 'Action' : 'Status'}</th></tr>
           </thead>
           <tbody>${rows.join('')}</tbody>
         </table>
       `;
     }
 
-    async function handleFulfillRequest(requestDocId, button) {
-      await updateLoan(requestDocId, 'fulfill', button);
-    }
-
-    async function handleReturnRequest(requestDocId, button) {
-      await updateLoan(requestDocId, 'return', button);
-    }
-
-    async function updateLoan(requestDocId, action, button) {
+    async function handleGiveRequest(requestDocId, button) {
       if (!db || !currentUser || button.disabled) return;
 
       const originalLabel = button.textContent;
       button.disabled = true;
-      button.textContent = action === 'fulfill' ? 'Fulfilling...' : 'Returning...';
+      button.textContent = 'Recording...';
 
       try {
         await runTransaction(db, async (transaction) => {
@@ -506,9 +520,8 @@
           if (!requestSnapshot.exists()) throw new Error('request-not-found');
 
           const request = requestSnapshot.data();
-          const expectedStatus = action === 'fulfill' ? 'pending' : 'fulfilled';
           const currentStatus = request.status || 'pending';
-          if (currentStatus !== expectedStatus) throw new Error('request-already-updated');
+          if (currentStatus !== 'pending') throw new Error('request-already-updated');
 
           const matchingBook = allBooks.find((book) =>
             book.docId === request.bookDocId || book.id === Number(request.bookId)
@@ -522,66 +535,56 @@
 
           const book = bookSnapshot.data();
           const quantity = Math.max(0, Number.parseInt(book.quantity, 10) || 0);
-          const activeCheckouts = countCheckedOutForBook(bookDocId, request.bookId);
+          const copiesAlreadyGiven = countGivenForBook(bookDocId, request.bookId);
           const storedTotal = Number.parseInt(book.totalQuantity, 10);
           const totalQuantity = Number.isFinite(storedTotal)
-            ? Math.max(quantity + activeCheckouts, storedTotal)
-            : quantity + activeCheckouts;
+            ? Math.max(quantity + copiesAlreadyGiven, storedTotal)
+            : quantity + copiesAlreadyGiven;
 
-          if (action === 'fulfill') {
-            if (quantity < 1) throw new Error('out-of-stock');
-            const nextQuantity = quantity - 1;
-            transaction.update(bookRef, {
-              quantity: nextQuantity,
-              totalQuantity,
-              status: nextQuantity === 0 ? 'Unavailable' : 'Available',
-              updatedAt: serverTimestamp()
-            });
-            transaction.update(requestRef, {
-              status: 'fulfilled',
-              bookDocId,
-              fulfilledAt: serverTimestamp(),
-              updatedAt: serverTimestamp()
-            });
-          } else {
-            transaction.update(bookRef, {
-              quantity: quantity + 1,
-              totalQuantity: Math.max(totalQuantity, quantity + 1),
-              status: 'Available',
-              updatedAt: serverTimestamp()
-            });
-            transaction.update(requestRef, {
-              status: 'returned',
-              returnedAt: serverTimestamp(),
-              updatedAt: serverTimestamp()
-            });
-          }
+          if (quantity < 1) throw new Error('out-of-stock');
+          const nextQuantity = quantity - 1;
+          transaction.update(bookRef, {
+            quantity: nextQuantity,
+            totalQuantity,
+            status: nextQuantity === 0 ? 'Unavailable' : 'Available',
+            updatedAt: serverTimestamp()
+          });
+          transaction.update(requestRef, {
+            status: 'given',
+            bookDocId,
+            bookEdition: request.bookEdition || book.edition || '',
+            bookSubject: request.bookSubject || book.subject || 'Uncategorized',
+            givenAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
         });
 
-        toast(action === 'fulfill'
-          ? 'Request fulfilled. Inventory updated.'
-          : 'Book returned. One copy was added back to stock.');
+        toast('Copy given. Inventory and usage reporting were updated.');
       } catch (error) {
-        console.error(`Could not ${action} request:`, error);
+        console.error('Could not record copy given:', error);
         const messages = {
-          'out-of-stock': 'This book has no copies left. The request was not fulfilled.',
+          'out-of-stock': 'This book has no available copies. Nothing was recorded as given.',
           'book-not-found': 'The matching book could not be found in inventory.',
           'request-not-found': 'That request no longer exists.',
           'request-already-updated': 'That request was already updated by another volunteer.'
         };
-        toast(messages[error.message] || 'Could not update the request. Please try again.');
+        toast(messages[error.message] || 'Could not record the copy. Please try again.');
         button.disabled = false;
         button.textContent = originalLabel;
       }
     }
 
-    function countCheckedOutForBook(bookDocId, numericBookId) {
+    function countGivenForBook(bookDocId, numericBookId) {
       return allRequests.filter((request) =>
-        request.status === 'fulfilled' && (
+        isGivenRequest(request) && (
           request.bookDocId === bookDocId ||
           Number(request.bookId) === Number(numericBookId)
         )
       ).length;
+    }
+
+    function isGivenRequest(request) {
+      return request.status === 'given' || request.status === 'fulfilled';
     }
 
     function renderBooksTable() {
@@ -597,6 +600,7 @@
         return `
           <tr>
             <td><strong>${escapeHtml(b.title)}</strong></td>
+            <td>${escapeHtml(formatEdition(b.edition))}</td>
             <td>${escapeHtml(b.subject)}</td>
             <td style="font-family: monospace; font-size: 0.85em;">${escapeHtml(b.isbn || '—')}</td>
             <td>${escapeHtml(b.author || '—')}</td>
@@ -613,7 +617,7 @@
       container.innerHTML = `
         <table class="request-queue">
           <thead>
-            <tr><th>Title</th><th>Subject</th><th>ISBN</th><th>Author</th><th>Status</th><th>Available / Total</th><th style="text-align: right;">Actions</th></tr>
+            <tr><th>Title</th><th>Edition</th><th>Subject</th><th>ISBN</th><th>Author</th><th>Status</th><th>Available / Recorded</th><th style="text-align: right;">Actions</th></tr>
           </thead>
           <tbody>${rows}</tbody>
         </table>
@@ -654,7 +658,10 @@
       form.querySelector('[name="title"]').value = book.title || '';
       form.querySelector('[name="isbn"]').value = book.isbn || '';
       form.querySelector('[name="author"]').value = book.author || '';
-      form.querySelector('[name="status"]').value = book.status || 'Available';
+      form.querySelector('[name="edition"]').value = book.edition || '';
+      form.querySelector('[name="status"]').value = ['Available', 'Pending', 'Unavailable'].includes(book.status)
+        ? book.status
+        : (book.quantity > 0 ? 'Available' : 'Unavailable');
       form.querySelector('[name="quantity"]').value = book.quantity;
       form.querySelector('[name="totalQuantity"]').value = getTotalQuantity(book);
 
@@ -695,16 +702,16 @@
       const totalQuantityInput = e.target.querySelector('[name="totalQuantity"]');
       const totalQuantity = Math.max(0, parseInt(formData.get('totalQuantity'), 10) || 0);
       const editingBook = allBooks.find((book) => book.docId === editingBookDocId);
-      const checkedOutCount = editingBook
-        ? countCheckedOutForBook(editingBook.docId, editingBook.id)
+      const copiesGiven = editingBook
+        ? countGivenForBook(editingBook.docId, editingBook.id)
         : 0;
-      const minimumTotal = quantity + checkedOutCount;
+      const minimumTotal = quantity + copiesGiven;
 
       if (totalQuantity < minimumTotal) {
-        const checkedOutMessage = checkedOutCount
-          ? ` Total copies must include the ${checkedOutCount} currently checked out.`
+        const historyMessage = copiesGiven
+          ? ` It must include the ${copiesGiven} ${copiesGiven === 1 ? 'copy' : 'copies'} already given.`
           : '';
-        totalQuantityInput.setCustomValidity(`Total copies cannot be less than available copies.${checkedOutMessage}`);
+        totalQuantityInput.setCustomValidity(`Total copies cannot be less than available copies.${historyMessage}`);
         totalQuantityInput.reportValidity();
         submitButton.disabled = false;
         submitButton.textContent = 'Save';
@@ -716,6 +723,7 @@
         title: String(formData.get('title') || '').trim(),
         isbn: String(formData.get('isbn') || '').trim(),
         author: String(formData.get('author') || '').trim(),
+        edition: String(formData.get('edition') || '').trim(),
         subject,
         status: quantity === 0 ? 'Unavailable' : formData.get('status'),
         quantity,
@@ -782,16 +790,132 @@
       return maxId + 1;
     }
 
+    function renderSubjectUsage() {
+      const container = document.querySelector('[data-subject-usage]');
+      if (!container) return;
+
+      const summary = getSubjectUsage();
+      const exportButton = document.querySelector('[data-export-usage]');
+      exportButton.disabled = summary.length === 0;
+
+      if (!summary.length) {
+        container.innerHTML = '<div class="empty-state">No usage data yet. Subjects appear here after a copy is marked given.</div>';
+        return;
+      }
+
+      const totalGiven = summary.reduce((sum, item) => sum + item.count, 0);
+      const rows = summary.map((item, index) => `
+        <tr>
+          <td><span class="usage-rank" aria-label="Rank ${index + 1}">${index + 1}</span></td>
+          <td><strong>${escapeHtml(item.subject)}</strong></td>
+          <td><span class="quantity-fraction">${item.count}</span></td>
+          <td>${Math.round((item.count / totalGiven) * 100)}%</td>
+        </tr>
+      `).join('');
+
+      container.innerHTML = `
+        <table class="request-queue usage-table">
+          <thead><tr><th>Rank</th><th>Subject</th><th>Copies given</th><th>Share</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    function getSubjectUsage() {
+      const counts = new Map();
+      allRequests.filter(isGivenRequest).forEach((request) => {
+        const subject = getRequestBookValue(request, 'bookSubject', 'subject') || 'Uncategorized';
+        counts.set(subject, (counts.get(subject) || 0) + 1);
+      });
+
+      return Array.from(counts, ([subject, count]) => ({ subject, count }))
+        .sort((a, b) => b.count - a.count || a.subject.localeCompare(b.subject));
+    }
+
+    function exportUsageCsv() {
+      const givenRequests = allRequests.filter(isGivenRequest);
+      if (!givenRequests.length) {
+        toast('There is no usage data to export yet.');
+        return;
+      }
+
+      const summaryRows = [
+        ['Subject', 'Copies Given'],
+        ...getSubjectUsage().map((item) => [item.subject, item.count]),
+        [],
+        ['Date Given', 'Subject', 'Book', 'Edition', 'ISBN', 'Course', 'Student', 'Email', 'Request ID']
+      ];
+      const detailRows = givenRequests
+        .sort((a, b) => timestampMillis(b.givenAt || b.fulfilledAt) - timestampMillis(a.givenAt || a.fulfilledAt))
+        .map((request) => [
+          formatDate(request.givenAt || request.fulfilledAt || request.createdAt),
+          getRequestBookValue(request, 'bookSubject', 'subject') || 'Uncategorized',
+          request.bookTitle || 'Unknown',
+          formatEdition(getRequestBookValue(request, 'bookEdition', 'edition')),
+          request.bookIsbn || '',
+          request.course || '',
+          request.name || '',
+          request.email || '',
+          request.docId
+        ]);
+      const csv = [...summaryRows, ...detailRows]
+        .map((row) => row.map(csvCell).join(','))
+        .join('\r\n');
+      const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const date = new Date().toISOString().slice(0, 10);
+      link.href = url;
+      link.download = `textbook-library-usage-${date}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast('Usage CSV downloaded. It can be opened in Google Sheets or Excel.');
+    }
+
+    function getRequestBookValue(request, requestField, bookField) {
+      if (request[requestField]) return request[requestField];
+      const book = allBooks.find((candidate) =>
+        candidate.docId === request.bookDocId || candidate.id === Number(request.bookId)
+      );
+      return book?.[bookField] || '';
+    }
+
+    function csvCell(value) {
+      let text = String(value ?? '');
+      if (/^[=+\-@]/.test(text)) text = `'${text}`;
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+
+    function timestampMillis(timestamp) {
+      if (timestamp?.toMillis) return timestamp.toMillis();
+      const parsed = new Date(timestamp || 0).getTime();
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function formatDate(timestamp) {
+      if (timestamp?.toDate) return timestamp.toDate().toLocaleDateString();
+      const parsed = new Date(timestamp || 0);
+      return Number.isNaN(parsed.getTime()) || !timestamp ? 'N/A' : parsed.toLocaleDateString();
+    }
+
+    function formatEdition(edition) {
+      const value = String(edition || '').trim();
+      if (!value) return 'Not listed';
+      return /edition|\bed\.?$/i.test(value) ? value : `${value} edition`;
+    }
+
     function updateStats() {
       const available = allBooks
         .filter((book) => book.status === 'Available')
         .reduce((sum, book) => sum + book.quantity, 0);
-      const out = allRequests.filter((request) => request.status === 'fulfilled').length;
+      const studentsHelped = allRequests.filter(isGivenRequest).length;
       const total = allBooks.reduce((sum, book) => sum + getTotalQuantity(book), 0);
 
       document.querySelector('[data-stat-total]').textContent = total;
       document.querySelector('[data-stat-available]').textContent = available;
-      document.querySelector('[data-stat-out]').textContent = out;
+      document.querySelector('[data-stat-out]').textContent = studentsHelped;
     }
 
     function escapeHtml(str) {
@@ -845,6 +969,7 @@
         title: data.title || '',
         isbn: data.isbn || '',
         author: data.author || '',
+        edition: data.edition || '',
         subject: data.subject || 'Uncategorized',
         status: data.status || 'Available',
         quantity,
@@ -855,8 +980,8 @@
     }
 
     function getTotalQuantity(book) {
-      const activeCheckouts = countCheckedOutForBook(book.docId, book.id);
-      return Math.max(book.totalQuantity || 0, book.quantity + activeCheckouts);
+      const copiesGiven = countGivenForBook(book.docId, book.id);
+      return Math.max(book.totalQuantity || 0, book.quantity + copiesGiven);
     }
 
     function compareBooks(a, b) {

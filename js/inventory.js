@@ -3,8 +3,8 @@
    Falls back to seed-inventory.json if Firebase not configured.
 
    Firestore structure: /books/{bookId}
-   Fields: id, title, isbn, subject, status, quantity, author, createdAt, updatedAt
-   Status values: Available | Pending | Checked Out
+   Fields: id, title, isbn, edition, subject, status, quantity, totalQuantity, author, createdAt, updatedAt
+   Status values: Available | Pending | Unavailable
    ============================================================ */
 
 import { db } from './firebase-config.js';
@@ -22,6 +22,7 @@ function normalizeBook(docSnap) {
     id: Number.isFinite(parsedId) ? parsedId : 0,
     title: data.title || '',
     isbn: data.isbn || '',
+    edition: data.edition || '',
     subject: data.subject || 'Uncategorized',
     status: data.status || 'Available',
     quantity,
@@ -61,6 +62,7 @@ export async function fetchInventory() {
       .map((book) => ({
         ...book,
         docId: String(book.id),
+        edition: book.edition || '',
         totalQuantity: book.totalQuantity ?? book.quantity
       }))
       .sort(compareBooks);
@@ -88,7 +90,7 @@ export function filterBooks(books, { search = '', subjects = [], availableOnly =
     if (availableOnly && (b.status !== 'Available' || b.quantity < 1)) return false;
     if (subjects.length && !subjects.includes(b.subject)) return false;
     if (q) {
-      const hay = `${b.title} ${b.isbn} ${b.author || ''}`.toLowerCase();
+      const hay = `${b.title} ${b.isbn} ${b.author || ''} ${b.edition || ''}`.toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;

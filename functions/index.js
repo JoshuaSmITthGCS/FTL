@@ -58,8 +58,10 @@ export const emailBookRequest = onDocumentCreated(
     const subject = `Book request: ${clean(request.bookTitle, 'Untitled book')}`;
     const fields = [
       ['Book', request.bookTitle],
+      ['Edition', request.bookEdition],
       ['ISBN', request.bookIsbn],
       ['Author(s)', request.bookAuthor],
+      ['Subject', request.bookSubject],
       ['Course', request.course],
       ['Availability Rating', request.availabilityRating],
       ['Name', request.name],

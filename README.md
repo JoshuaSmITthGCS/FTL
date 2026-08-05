@@ -57,7 +57,9 @@ free-textbook-library/
 
 **Requests in Firestore.** The catalog writes student requests to the `requests` collection. If Firebase is unavailable, it falls back to a pre-filled email.
 
-**Atomic checkout and return flow.** Admins mark pending requests fulfilled to decrement the matching book's available quantity. Inventory displays available and total copies as a fraction, such as `2 / 5`. Fulfilled requests appear under Checked Out; marking one returned restores a copy. Firestore transactions keep the request and inventory changes in sync.
+**Permanent copy-given flow.** Admins mark a pending request “copy given” to decrement the matching book's available quantity. Given copies are not expected back. Inventory displays available and all recorded copies as a fraction, such as `2 / 5`, while completed requests form a permanent “Copies given” history. Firestore transactions keep the request and inventory changes in sync.
+
+**Edition and usage reporting.** Edition is stored on each book and shown to students in the catalog and request confirmation. The admin dashboard ranks copies given by subject and exports a spreadsheet-ready CSV with both a subject summary and request-level details.
 
 **Firebase admin authentication.** The admin form signs in through Firebase Authentication, then verifies the user's matching Firestore admin document before showing the dashboard.
 
@@ -103,7 +105,7 @@ Full setup instructions for non-developers are in `SETUP_GUIDE.md`.
 2. Add the new navigation link to the HTML pages where it should appear
 3. Create `css/pages/newpage.css` for page-specific styles
 
-**Add a new field to inventory (e.g. author):**
+**Add a new field to inventory:**
 1. Add the field to book documents in Firestore and the admin book form
 2. Normalize the field in `js/inventory.js`
 3. Expose it in the catalog table by editing `catalog.html`'s `renderTable()` function
