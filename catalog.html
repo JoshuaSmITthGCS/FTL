@@ -192,7 +192,7 @@
     import { toast } from './js/main.js';
     import { fetchInventory, filterBooks, sortBooks } from './js/inventory.js';
     import { db } from './js/firebase-config.js';
-    import { collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+    import { collection, doc, runTransaction, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
     let allBooks = [];
     let filtered = [];
@@ -372,9 +372,10 @@
       try {
         // Try Firestore first
         if (db) {
+          const bookDocId = currentBook.docId || String(currentBook.id);
           const requestData = {
             bookId: currentBook.id,
-            bookDocId: currentBook.docId || String(currentBook.id),
+            bookDocId,
             bookTitle: currentBook.title || '',
             bookIsbn: currentBook.isbn || '',
             bookAuthor: currentBook.author || '',
@@ -390,7 +391,28 @@
             updatedAt: serverTimestamp()
           };
 
-          await addDoc(collection(db, 'requests'), requestData);
+          const bookRef = doc(db, 'books', bookDocId);
+          const requestRef = doc(collection(db, 'requests'));
+
+          await runTransaction(db, async (transaction) => {
+            const bookSnapshot = await transaction.get(bookRef);
+            if (!bookSnapshot.exists()) throw new Error('book-not-found');
+
+            const book = bookSnapshot.data();
+            const quantity = Number.parseInt(book.quantity, 10) || 0;
+            if (book.status !== 'Available' || quantity < 1) {
+              throw new Error('book-unavailable');
+            }
+
+            transaction.set(requestRef, requestData);
+            transaction.update(bookRef, { status: 'Pending', updatedAt: serverTimestamp() });
+          });
+
+          currentBook.status = 'Pending';
+          const cached = allBooks.find(b => b.docId === bookDocId);
+          if (cached) cached.status = 'Pending';
+          applyAndRender();
+
           await submitToNetlify(formData);
           toast('✓ Request sent successfully! A volunteer will email you within 48-72 hours.');
           closeModal();
@@ -398,6 +420,13 @@
         }
       } catch (error) {
         console.error('Firestore submission error:', error);
+        if (error.message === 'book-unavailable') {
+          toast('Sorry — this book was just claimed by someone else. Please refresh and try another copy.');
+          closeModal();
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Send request';
+          return;
+        }
         // Fall through to mailto fallback
       }
 

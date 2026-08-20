@@ -465,6 +465,9 @@
         pendingContainer.querySelectorAll('[data-give-request]').forEach((button) => {
           button.addEventListener('click', () => handleGiveRequest(button.dataset.giveRequest, button));
         });
+        pendingContainer.querySelectorAll('[data-decline-request]').forEach((button) => {
+          button.addEventListener('click', () => handleDeclineRequest(button.dataset.declineRequest, button));
+        });
       }
 
       if (!givenRequests.length) {
@@ -481,7 +484,8 @@
         const timestamp = showAction ? request.createdAt : (request.givenAt || request.fulfilledAt || request.createdAt);
         const date = formatDate(timestamp);
         const actionButton = showAction
-          ? `<button class="btn btn--accent btn--small" data-give-request="${escapeHtml(request.docId)}">Mark copy given</button>`
+          ? `<button class="btn btn--accent btn--small" data-give-request="${escapeHtml(request.docId)}">Mark copy given</button>
+             <button class="btn btn--ghost btn--small" data-decline-request="${escapeHtml(request.docId)}">Decline</button>`
           : '<span class="status status--available">Given</span>';
         return `
           <tr>
@@ -569,6 +573,63 @@
           'request-already-updated': 'That request was already updated by another volunteer.'
         };
         toast(messages[error.message] || 'Could not record the copy. Please try again.');
+        button.disabled = false;
+        button.textContent = originalLabel;
+      }
+    }
+
+    async function handleDeclineRequest(requestDocId, button) {
+      if (!db || !currentUser || button.disabled) return;
+
+      const originalLabel = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Declining...';
+
+      try {
+        await runTransaction(db, async (transaction) => {
+          const requestRef = doc(db, 'requests', requestDocId);
+          const requestSnapshot = await transaction.get(requestRef);
+          if (!requestSnapshot.exists()) throw new Error('request-not-found');
+
+          const request = requestSnapshot.data();
+          const currentStatus = request.status || 'pending';
+          if (currentStatus !== 'pending') throw new Error('request-already-updated');
+
+          const matchingBook = allBooks.find((book) =>
+            book.docId === request.bookDocId || book.id === Number(request.bookId)
+          );
+          const bookDocId = request.bookDocId || matchingBook?.docId || String(request.bookId || '');
+
+          if (bookDocId) {
+            const bookRef = doc(db, 'books', bookDocId);
+            const bookSnapshot = await transaction.get(bookRef);
+            if (bookSnapshot.exists()) {
+              const book = bookSnapshot.data();
+              const quantity = Math.max(0, Number.parseInt(book.quantity, 10) || 0);
+              if (book.status === 'Pending') {
+                transaction.update(bookRef, {
+                  status: quantity === 0 ? 'Unavailable' : 'Available',
+                  updatedAt: serverTimestamp()
+                });
+              }
+            }
+          }
+
+          transaction.update(requestRef, {
+            status: 'declined',
+            declinedAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
+        });
+
+        toast('Request declined. The book is available again.');
+      } catch (error) {
+        console.error('Could not decline request:', error);
+        const messages = {
+          'request-not-found': 'That request no longer exists.',
+          'request-already-updated': 'That request was already updated by another volunteer.'
+        };
+        toast(messages[error.message] || 'Could not decline the request. Please try again.');
         button.disabled = false;
         button.textContent = originalLabel;
       }
