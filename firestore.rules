@@ -13,7 +13,18 @@ service cloud.firestore {
     // Books collection - public read, admin-only write
     match /books/{bookId} {
       allow read: if true;  // Anyone can read books
-      allow create, update, delete: if isAdmin();
+
+      // Public requests are allowed to flip a book from Available to Pending
+      // (and touch nothing else) so the catalog can auto-mark a book as
+      // claimed the moment someone submits a request for it.
+      allow update: if isAdmin() || (
+        request.auth == null
+        && resource.data.status == 'Available'
+        && request.resource.data.status == 'Pending'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+      );
+
+      allow create, delete: if isAdmin();
     }
 
     // Requests collection - public create, admin-only read/update
