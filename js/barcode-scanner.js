@@ -201,7 +201,8 @@ function createFeedback() {
   Single mode:     resolves with the first valid ISBN, or null if cancelled.
   Continuous mode: stays open; calls onScan(isbn) for each book, one at a time, and
                    resolves with the number of scans when the user taps Done.
-                   onScan resolves { kind: 'added' | 'copy' | 'unknown' | 'error', title, message }.
+                   onScan resolves { kind: 'added' | 'copy' | 'unknown' | 'error', title, message, stop? };
+                   stop: true closes the scanner right after that scan.
 */
 function runScanner({ continuous = false, onScan = null } = {}) {
   return new Promise((resolve) => {
@@ -263,6 +264,7 @@ function runScanner({ continuous = false, onScan = null } = {}) {
           row.title.textContent = result.title || `ISBN ${isbn}`;
           row.note.textContent = result.message || '';
           row.item.dataset.kind = result.kind || 'added';
+          if (result.stop) setTimeout(finish, 500); // brief pause so the scan is visibly confirmed
         } catch (error) {
           console.error('Bulk scan failed for', isbn, error);
           row.note.textContent = 'Could not save. Scan it again.';

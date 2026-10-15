@@ -107,6 +107,7 @@
             >
               Collapse
             </button>
+            <button type="button" class="btn btn--ghost" data-checkout-btn>Check Out</button>
             <button type="button" class="btn btn--ghost" data-bulk-scan-btn>Bulk Scan</button>
             <button type="button" class="btn btn--ghost" data-scan-book-btn>Scan Book</button>
             <button class="btn btn--accent" data-add-book-btn>+ Add Book</button>
@@ -215,6 +216,34 @@
     </div>
   </div>
 
+  <!-- CHECK OUT MODAL -->
+  <div class="modal-backdrop" data-checkout-modal>
+    <div class="modal">
+      <h3>Check Out Books</h3>
+      <p class="modal__hint">Enter the person's details and submit. Each copy leaves the available inventory and is added to Copies given with today's date. Scan more books to add them to this checkout.</p>
+      <div class="checkout-cart" data-checkout-cart></div>
+      <button type="button" class="btn btn--ghost checkout-scan" data-checkout-scan>Scan another book</button>
+      <form data-checkout-form>
+        <div class="modal__field">
+          <label for="checkout-name">Name *</label>
+          <input type="text" id="checkout-name" name="name" required autocomplete="off" />
+        </div>
+        <div class="modal__field">
+          <label for="checkout-email">Email *</label>
+          <input type="email" id="checkout-email" name="email" required autocomplete="off" />
+        </div>
+        <div class="modal__field">
+          <label for="checkout-course">Course</label>
+          <input type="text" id="checkout-course" name="course" autocomplete="off" placeholder="Optional" />
+        </div>
+        <div class="modal__actions">
+          <button type="button" class="btn btn--ghost" data-checkout-cancel>Cancel</button>
+          <button type="submit" class="btn btn--accent" data-checkout-submit disabled>Check out</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <footer class="site-footer">
     <div class="container">
       <div class="site-footer__grid">
@@ -299,6 +328,7 @@
                 await signOut(auth);
                 stopDashboardSync();
                 closeBookModal();
+                closeCheckoutModal();
                 showLogin();
               }
             } catch (error) {
@@ -311,6 +341,7 @@
             currentUser = null;
             stopDashboardSync();
             closeBookModal();
+            closeCheckoutModal();
             showLogin();
           }
         });
@@ -325,6 +356,11 @@
       document.querySelector('[data-add-book-btn]').addEventListener('click', openAddBookModal);
       document.querySelector('[data-scan-book-btn]').addEventListener('click', handleScanBook);
       document.querySelector('[data-bulk-scan-btn]').addEventListener('click', handleBulkScan);
+      document.querySelector('[data-checkout-btn]').addEventListener('click', startCheckout);
+      document.querySelector('[data-checkout-scan]').addEventListener('click', () => handleCheckoutScan());
+      document.querySelector('[data-checkout-cancel]').addEventListener('click', closeCheckoutModal);
+      document.querySelector('[data-checkout-form]').addEventListener('submit', handleCheckoutSubmit);
+      document.querySelector('[data-checkout-cart]').addEventListener('click', handleCheckoutCartClick);
       document.querySelector('[data-scan-isbn-btn]').addEventListener('click', handleScanIntoForm);
       document.querySelector('[data-books-toggle]').addEventListener('click', toggleBooksSection);
       document.querySelector('[data-book-modal-cancel]').addEventListener('click', closeBookModal);
@@ -342,7 +378,7 @@
         }
       });
       document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') {
+        if (event.key === 'Escape' && !document.querySelector('.scanner')) {
           closeBookModal();
         }
       });
@@ -870,6 +906,210 @@
           updatedAt: serverTimestamp()
         });
       });
+    }
+
+    // ---- Check out: scan books into a cart, then record them against one person ----
+
+    const MAX_CHECKOUT_COPIES = 300; // keeps one transaction under Firestore's 500-write limit
+    let checkoutCart = new Map(); // book docId -> copies
+
+    function checkoutCopyTotal() {
+      return [...checkoutCart.values()].reduce((sum, count) => sum + count, 0);
+    }
+
+    // The scanner opens first. The first available book scanned closes it and opens the
+    // name/email form with that book already listed; more books can be scanned from the form.
+    async function startCheckout() {
+      checkoutCart = new Map();
+      document.querySelector('[data-checkout-form]').reset();
+      renderCheckoutCart();
+
+      await handleCheckoutScan({ stopOnFirst: true });
+      if (!checkoutCart.size) return;
+
+      document.querySelector('[data-checkout-modal]').classList.add('show');
+      document.querySelector('#checkout-name').focus();
+    }
+
+    function closeCheckoutModal() {
+      document.querySelector('[data-checkout-modal]').classList.remove('show');
+      document.querySelector('[data-checkout-form]').reset();
+      checkoutCart = new Map();
+      renderCheckoutCart();
+    }
+
+    function renderCheckoutCart() {
+      const container = document.querySelector('[data-checkout-cart]');
+      const submit = document.querySelector('[data-checkout-submit]');
+      const total = checkoutCopyTotal();
+
+      submit.disabled = total === 0;
+      submit.textContent = total ? `Check out ${total} ${total === 1 ? 'book' : 'books'}` : 'Check out';
+
+      if (!total) {
+        container.innerHTML = '<div class="empty-state">No books yet. Scan a barcode to add one.</div>';
+        return;
+      }
+
+      container.innerHTML = [...checkoutCart].map(([docId, count]) => {
+        const book = allBooks.find((candidate) => candidate.docId === docId);
+        return `
+          <div class="checkout-line">
+            <div class="checkout-line__info">
+              <strong>${escapeHtml(book?.title || 'Unknown book')}</strong>
+              <span>${escapeHtml(formatEdition(book?.edition))} · ${book ? book.quantity : 0} available</span>
+            </div>
+            <div class="checkout-line__qty">
+              <button type="button" class="btn btn--ghost btn--small" data-cart-dec="${escapeHtml(docId)}" aria-label="One fewer copy">−</button>
+              <span aria-label="${count} copies">${count}</span>
+              <button type="button" class="btn btn--ghost btn--small" data-cart-inc="${escapeHtml(docId)}" aria-label="One more copy">+</button>
+              <button type="button" class="btn btn--ghost btn--small" data-cart-remove="${escapeHtml(docId)}" aria-label="Remove from list">×</button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function handleCheckoutCartClick(event) {
+      const button = event.target.closest('button');
+      if (!button) return;
+
+      const { cartInc, cartDec, cartRemove } = button.dataset;
+      if (cartRemove) {
+        checkoutCart.delete(cartRemove);
+      } else if (cartDec) {
+        const next = (checkoutCart.get(cartDec) || 0) - 1;
+        if (next < 1) checkoutCart.delete(cartDec);
+        else checkoutCart.set(cartDec, next);
+      } else if (cartInc) {
+        const book = allBooks.find((candidate) => candidate.docId === cartInc);
+        const count = checkoutCart.get(cartInc) || 0;
+        if (!book || count >= book.quantity) {
+          toast(`Only ${book?.quantity || 0} available.`);
+        } else if (checkoutCopyTotal() >= MAX_CHECKOUT_COPIES) {
+          toast(`One checkout is limited to ${MAX_CHECKOUT_COPIES} books.`);
+        } else {
+          checkoutCart.set(cartInc, count + 1);
+        }
+      }
+      renderCheckoutCart();
+    }
+
+    async function handleCheckoutScan({ stopOnFirst = false } = {}) {
+      await scanIsbnsContinuously(async (isbn) => {
+        const matches = allBooks.filter((book) => isbnMatches(book.isbn, isbn));
+        if (!matches.length) {
+          return { kind: 'error', title: `ISBN ${isbn}`, message: 'Not in inventory' };
+        }
+
+        // With duplicate entries for one ISBN, take the first that still has copies left.
+        const book = matches.find((candidate) => (checkoutCart.get(candidate.docId) || 0) < candidate.quantity) || matches[0];
+        const count = checkoutCart.get(book.docId) || 0;
+        if (book.quantity < 1) {
+          return { kind: 'error', title: book.title, message: 'No copies available' };
+        }
+        if (count >= book.quantity) {
+          return { kind: 'error', title: book.title, message: `Only ${book.quantity} available, all already in the list` };
+        }
+        if (checkoutCopyTotal() >= MAX_CHECKOUT_COPIES) {
+          return { kind: 'error', title: book.title, message: `Limit of ${MAX_CHECKOUT_COPIES} books per checkout` };
+        }
+
+        checkoutCart.set(book.docId, count + 1);
+        renderCheckoutCart();
+        return { kind: 'copy', title: book.title, message: `In list (${count + 1})`, stop: stopOnFirst };
+      });
+    }
+
+    async function handleCheckoutSubmit(event) {
+      event.preventDefault();
+      if (!checkoutCart.size) return;
+      if (!db || !currentUser) {
+        toast('The admin connection is unavailable right now.');
+        return;
+      }
+
+      const formData = new FormData(event.target);
+      const name = String(formData.get('name') || '').trim();
+      const email = String(formData.get('email') || '').trim();
+      const course = String(formData.get('course') || '').trim();
+      const lines = [...checkoutCart].map(([docId, count]) => ({ docId, count }));
+      const totalCopies = checkoutCopyTotal();
+
+      const submit = event.target.querySelector('[data-checkout-submit]');
+      submit.disabled = true;
+      submit.textContent = 'Recording...';
+
+      try {
+        // One transaction: either every copy is recorded or none are.
+        await runTransaction(db, async (transaction) => {
+          const bookRefs = lines.map((line) => doc(db, 'books', line.docId));
+          const snapshots = await Promise.all(bookRefs.map((ref) => transaction.get(ref)));
+
+          const updates = snapshots.map((snapshot, index) => {
+            const { docId, count } = lines[index];
+            const cached = allBooks.find((book) => book.docId === docId);
+            if (!snapshot.exists()) throw Object.assign(new Error('book-not-found'), { bookTitle: cached?.title });
+
+            const book = snapshot.data();
+            const quantity = Math.max(0, Number.parseInt(book.quantity, 10) || 0);
+            if (quantity < count) throw Object.assign(new Error('out-of-stock'), { bookTitle: book.title });
+
+            const copiesAlreadyGiven = countGivenForBook(docId, book.id);
+            const storedTotal = Number.parseInt(book.totalQuantity, 10);
+            const totalQuantity = Number.isFinite(storedTotal)
+              ? Math.max(quantity + copiesAlreadyGiven, storedTotal)
+              : quantity + copiesAlreadyGiven;
+            return { docId, count, book, quantity, totalQuantity };
+          });
+
+          updates.forEach(({ docId, count, book, quantity, totalQuantity }, index) => {
+            const nextQuantity = quantity - count;
+            transaction.update(bookRefs[index], {
+              quantity: nextQuantity,
+              totalQuantity,
+              status: nextQuantity === 0 ? 'Unavailable' : (book.status === 'Pending' ? 'Pending' : 'Available'),
+              updatedAt: serverTimestamp()
+            });
+
+            // One record per copy, so Copies given and the usage report count every book.
+            for (let copy = 0; copy < count; copy += 1) {
+              transaction.set(doc(collection(db, 'requests')), {
+                bookId: book.id ?? Number(docId) ?? 0,
+                bookDocId: docId,
+                bookTitle: book.title || '',
+                bookIsbn: book.isbn || '',
+                bookAuthor: book.author || '',
+                bookEdition: book.edition || '',
+                bookSubject: book.subject || 'Uncategorized',
+                course,
+                name,
+                email,
+                message: '',
+                source: 'in-person checkout',
+                status: 'given',
+                createdAt: serverTimestamp(),
+                givenAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+              });
+            }
+          });
+        });
+
+        toast(`Checked out ${totalCopies} ${totalCopies === 1 ? 'book' : 'books'} to ${name}.`, 5000);
+        closeCheckoutModal();
+      } catch (error) {
+        console.error('Could not record checkout:', error);
+        const title = error.bookTitle ? `"${error.bookTitle}"` : 'A book';
+        const messages = {
+          'out-of-stock': `${title} doesn't have enough copies left. Nothing was recorded.`,
+          'book-not-found': `${title} is no longer in inventory. Nothing was recorded.`
+        };
+        toast(messages[error.message] || (error.code === 'permission-denied'
+          ? 'Firebase rejected the checkout. The updated Firestore rules may not be deployed yet.'
+          : 'Could not record the checkout. Nothing was saved. Please try again.'), 6000);
+        submit.disabled = false;
+        renderCheckoutCart();
+      }
     }
 
     // Modal button: scan into the form that is already open.
