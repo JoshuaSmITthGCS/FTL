@@ -3,6 +3,7 @@
 
    scanIsbn()        Opens a full-screen camera overlay and resolves with a
                      normalized ISBN string, or null if cancelled.
+   scanIsbnsContinuously(onScan)  Bulk mode: stays open, calls onScan(isbn) per book, resolves with the scan count.
    normalizeIsbn()   Strips hyphens/spaces; returns '' when not a valid ISBN.
    toIsbn13()        Converts a valid ISBN-10 or ISBN-13 to ISBN-13.
    isbnMatches()     True when two ISBN strings refer to the same book.
@@ -129,22 +130,23 @@ export function suggestSubject(tags, knownSubjects) {
 
 /* ---------- Scanner overlay ---------- */
 
-function buildOverlay() {
+function buildOverlay(continuous) {
   const overlay = document.createElement('div');
-  overlay.className = 'scanner';
+  overlay.className = `scanner${continuous ? ' scanner--continuous' : ''}`;
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-modal', 'true');
-  overlay.setAttribute('aria-label', 'Scan a book barcode');
+  overlay.setAttribute('aria-label', continuous ? 'Scan several book barcodes' : 'Scan a book barcode');
   overlay.innerHTML = `
     <div class="scanner__panel">
       <video class="scanner__video" playsinline muted></video>
       <div class="scanner__guide" aria-hidden="true"></div>
       <p class="scanner__status" role="status" aria-live="polite">Starting camera…</p>
+      ${continuous ? '<ul class="scanner__log" aria-label="Scanned books"></ul>' : ''}
       <form class="scanner__manual" data-scanner-manual>
         <input type="text" inputmode="numeric" placeholder="Or type the ISBN" aria-label="Type an ISBN" />
-        <button type="submit" class="btn btn--accent btn--small">Use</button>
+        <button type="submit" class="btn btn--accent btn--small">${continuous ? 'Add' : 'Use'}</button>
       </form>
-      <button type="button" class="btn btn--ghost scanner__cancel" data-scanner-cancel>Cancel</button>
+      <button type="button" class="btn ${continuous ? 'btn--accent' : 'btn--ghost'} scanner__cancel" data-scanner-cancel>${continuous ? 'Done' : 'Cancel'}</button>
     </div>`;
   return overlay;
 }
@@ -173,16 +175,54 @@ async function createDetector() {
   };
 }
 
-export function scanIsbn() {
+// Short beep + vibration so a good scan is confirmed without looking at the screen.
+function createFeedback() {
+  let audio = null;
+  try {
+    audio = new (window.AudioContext || window.webkitAudioContext)();
+  } catch { /* no audio available */ }
+  return () => {
+    try {
+      navigator.vibrate?.(60);
+      if (!audio) return;
+      const osc = audio.createOscillator();
+      const gain = audio.createGain();
+      osc.frequency.value = 880;
+      gain.gain.value = 0.15;
+      osc.connect(gain).connect(audio.destination);
+      osc.start();
+      osc.stop(audio.currentTime + 0.08);
+    } catch { /* feedback is best-effort */ }
+  };
+}
+
+/*
+  Shared scanner session.
+  Single mode:     resolves with the first valid ISBN, or null if cancelled.
+  Continuous mode: stays open; calls onScan(isbn) for each book, one at a time, and
+                   resolves with the number of scans when the user taps Done.
+                   onScan resolves { kind: 'added' | 'copy' | 'unknown' | 'error', title, message }.
+*/
+function runScanner({ continuous = false, onScan = null } = {}) {
   return new Promise((resolve) => {
-    const overlay = buildOverlay();
+    const overlay = buildOverlay(continuous);
     const video = overlay.querySelector('video');
     const status = overlay.querySelector('.scanner__status');
+    const log = overlay.querySelector('.scanner__log');
+    const doneButton = overlay.querySelector('[data-scanner-cancel]');
+    const beep = continuous ? createFeedback() : () => {};
+    const idleMessage = continuous
+      ? 'Scan each book in turn. Tap Done when finished.'
+      : 'Point the camera at the barcode on the back cover.';
     let stream = null;
     let timer = null;
     let done = false;
+    let scanned = 0;
+    let queue = Promise.resolve();
+    let armed = true; // the same barcode counts again only after it leaves the frame
+    let emptyFrames = 0;
 
-    function finish(result) {
+    function close(result) {
       if (done) return;
       done = true;
       clearTimeout(timer);
@@ -192,26 +232,71 @@ export function scanIsbn() {
       resolve(result);
     }
 
+    async function finish() {
+      if (!continuous) return close(null);
+      doneButton.disabled = true;
+      doneButton.textContent = 'Finishing…';
+      await queue;
+      close(scanned);
+    }
+
+    function logItem(text) {
+      const item = document.createElement('li');
+      item.className = 'scanner__item';
+      const title = document.createElement('strong');
+      const note = document.createElement('span');
+      title.textContent = text;
+      item.append(title, note);
+      log.prepend(item);
+      while (log.children.length > 30) log.lastChild.remove();
+      return { item, title, note };
+    }
+
+    function enqueue(isbn) {
+      scanned += 1;
+      beep();
+      const row = logItem(`ISBN ${isbn}`);
+      row.note.textContent = 'Adding…';
+      queue = queue.then(async () => {
+        try {
+          const result = await onScan(isbn);
+          row.title.textContent = result.title || `ISBN ${isbn}`;
+          row.note.textContent = result.message || '';
+          row.item.dataset.kind = result.kind || 'added';
+        } catch (error) {
+          console.error('Bulk scan failed for', isbn, error);
+          row.note.textContent = 'Could not save. Scan it again.';
+          row.item.dataset.kind = 'error';
+        }
+      });
+    }
+
     function accept(rawValue) {
       const isbn = normalizeIsbn(rawValue);
-      if (isbn) {
-        finish(isbn);
-        return true;
+      if (!isbn) {
+        status.textContent = `"${rawValue}" isn't an ISBN. Try the barcode on the back cover.`;
+        return false;
       }
-      status.textContent = `"${rawValue}" isn't an ISBN. Try the barcode on the back cover.`;
-      return false;
+      if (continuous) {
+        enqueue(isbn);
+        status.textContent = idleMessage;
+      } else {
+        close(isbn);
+      }
+      return true;
     }
 
     function onKey(event) {
-      if (event.key === 'Escape') finish(null);
+      if (event.key === 'Escape') finish();
     }
 
     document.addEventListener('keydown', onKey);
-    overlay.querySelector('[data-scanner-cancel]').addEventListener('click', () => finish(null));
+    doneButton.addEventListener('click', finish);
     overlay.querySelector('[data-scanner-manual]').addEventListener('submit', (event) => {
       event.preventDefault();
-      const value = event.currentTarget.querySelector('input').value;
-      if (!accept(value)) event.currentTarget.querySelector('input').select();
+      const input = event.currentTarget.querySelector('input');
+      if (accept(input.value)) input.value = '';
+      else input.select();
     });
     document.body.appendChild(overlay);
 
@@ -239,18 +324,31 @@ export function scanIsbn() {
         return;
       }
 
-      status.textContent = 'Point the camera at the barcode on the back cover.';
+      status.textContent = idleMessage;
+      let lastIsbn = '';
       let lastRejected = '';
       const tick = async () => {
         if (done) return;
         try {
-          for (const value of await detect(video)) {
+          const values = await detect(video);
+          emptyFrames = values.length ? 0 : emptyFrames + 1;
+          if (emptyFrames >= 3) armed = true;
+
+          for (const value of values) {
             const isbn = normalizeIsbn(value);
-            if (isbn) return finish(isbn);
-            if (value !== lastRejected) {
-              lastRejected = value;
-              status.textContent = `"${value}" isn't an ISBN. Try the barcode on the back cover.`;
+            if (!isbn) {
+              if (value !== lastRejected) {
+                lastRejected = value;
+                status.textContent = `"${value}" isn't an ISBN. Try the barcode on the back cover.`;
+              }
+              continue;
             }
+            if (!continuous) return close(isbn);
+            // Ignore the book still in view; a different book, or the same one after it left, counts.
+            if (isbn === lastIsbn && !armed) continue;
+            lastIsbn = isbn;
+            armed = false;
+            enqueue(isbn);
           }
         } catch (error) {
           console.warn('Scan frame failed:', error);
@@ -260,4 +358,12 @@ export function scanIsbn() {
       tick();
     })();
   });
+}
+
+export function scanIsbn() {
+  return runScanner();
+}
+
+export function scanIsbnsContinuously(onScan) {
+  return runScanner({ continuous: true, onScan });
 }

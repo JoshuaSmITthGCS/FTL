@@ -386,3 +386,47 @@
   font-size: var(--fs-small);
   font-family: inherit;
 }
+
+/* Bulk scan: running list of what was just scanned */
+.scanner--continuous .scanner__panel {
+  max-height: 100%;
+  overflow-y: auto;
+}
+.scanner--continuous .scanner__video {
+  aspect-ratio: 16 / 9;
+}
+.scanner--continuous .scanner__guide {
+  padding-bottom: 12%;
+}
+.scanner__log {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 200px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.scanner__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--color-rule);
+  border-radius: var(--radius-sm);
+  background: var(--color-paper);
+  font-size: var(--fs-small);
+}
+.scanner__item span {
+  font-size: var(--fs-tiny);
+  color: var(--color-ink-muted);
+}
+.scanner__item[data-kind="added"],
+.scanner__item[data-kind="copy"] { border-left-color: #2f7d4f; }
+.scanner__item[data-kind="unknown"] { border-left-color: #c58a1b; }
+.scanner__item[data-kind="error"] { border-left-color: #b3392f; }
+
+.scanner__cancel {
+  justify-content: center;
+}

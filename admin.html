@@ -107,6 +107,7 @@
             >
               Collapse
             </button>
+            <button type="button" class="btn btn--ghost" data-bulk-scan-btn>Bulk Scan</button>
             <button type="button" class="btn btn--ghost" data-scan-book-btn>Scan Book</button>
             <button class="btn btn--accent" data-add-book-btn>+ Add Book</button>
           </div>
@@ -247,7 +248,7 @@
 
   <script type="module">
     import { toast } from './js/main.js';
-    import { scanIsbn, lookupIsbn, isbnMatches, suggestSubject } from './js/barcode-scanner.js';
+    import { scanIsbn, scanIsbnsContinuously, lookupIsbn, isbnMatches, suggestSubject, toIsbn13 } from './js/barcode-scanner.js';
     import { db, auth, firebaseProjectId } from './js/firebase-config.js';
     import {
       signInWithEmailAndPassword,
@@ -323,6 +324,7 @@
       document.querySelector('[data-logout]').addEventListener('click', handleLogout);
       document.querySelector('[data-add-book-btn]').addEventListener('click', openAddBookModal);
       document.querySelector('[data-scan-book-btn]').addEventListener('click', handleScanBook);
+      document.querySelector('[data-bulk-scan-btn]').addEventListener('click', handleBulkScan);
       document.querySelector('[data-scan-isbn-btn]').addEventListener('click', handleScanIntoForm);
       document.querySelector('[data-books-toggle]').addEventListener('click', toggleBooksSection);
       document.querySelector('[data-book-modal-cancel]').addEventListener('click', closeBookModal);
@@ -781,6 +783,93 @@
       }
       openAddBookModal();
       await fillFormFromIsbn(isbn);
+    }
+
+    // Bulk mode: keep the camera open. A known book gets +1 copy; an unknown book is created
+    // with whatever the lookup finds, so a whole box can be entered without touching the form.
+    async function handleBulkScan() {
+      if (!db || !currentUser) {
+        toast('The admin connection is unavailable right now.');
+        return;
+      }
+
+      const session = {
+        added: new Map(), // ISBN-13 -> { docId, title } for books created during this session
+        nextId: allBooks.reduce((max, book) => Math.max(max, book.id || 0), 0) + 1,
+        counts: { added: 0, copy: 0, unknown: 0 }
+      };
+
+      const scanned = await scanIsbnsContinuously((isbn) => processBulkIsbn(isbn, session));
+      if (!scanned) return;
+
+      const { added, copy, unknown } = session.counts;
+      const parts = [`${added} new`, `${copy} extra ${copy === 1 ? 'copy' : 'copies'}`];
+      if (unknown) parts.push(`${unknown} need a title`);
+      toast(`Bulk scan done: ${parts.join(', ')}.`, 6000);
+    }
+
+    async function processBulkIsbn(isbn, session) {
+      const key = toIsbn13(isbn);
+      const known = session.added.get(key) || (() => {
+        const book = findBookByIsbn(isbn);
+        return book ? { docId: book.docId, title: book.title } : null;
+      })();
+
+      if (known) {
+        await addCopyToBook(known.docId);
+        session.counts.copy += 1;
+        return { kind: 'copy', title: known.title, message: '+1 copy' };
+      }
+
+      const info = await lookupIsbn(isbn);
+      const knownSubjects = [...new Set([...DEFAULT_SUBJECTS, ...allBooks.map((book) => book.subject).filter(Boolean)])];
+      const subject = suggestSubject(info?.subjects, knownSubjects) || 'Uncategorized';
+      const title = info?.title || `Unknown title (ISBN ${isbn})`;
+
+      while (allBooks.some((book) => book.id === session.nextId || book.docId === String(session.nextId))) {
+        session.nextId += 1;
+      }
+      const id = session.nextId++;
+
+      await setDoc(doc(db, 'books', String(id)), {
+        id,
+        title,
+        isbn: key,
+        author: info?.author || '',
+        edition: '',
+        subject,
+        status: 'Available',
+        quantity: 1,
+        totalQuantity: 1,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      session.added.set(key, { docId: String(id), title });
+
+      if (!info?.title) {
+        session.counts.unknown += 1;
+        return { kind: 'unknown', title, message: 'Added. No details found, edit the title later.' };
+      }
+      session.counts.added += 1;
+      return { kind: 'added', title, message: `Added · ${subject}` };
+    }
+
+    async function addCopyToBook(bookDocId) {
+      await runTransaction(db, async (transaction) => {
+        const bookRef = doc(db, 'books', bookDocId);
+        const snapshot = await transaction.get(bookRef);
+        if (!snapshot.exists()) throw new Error('book-not-found');
+
+        const book = snapshot.data();
+        const quantity = Math.max(0, Number.parseInt(book.quantity, 10) || 0);
+        const total = Math.max(quantity, Number.parseInt(book.totalQuantity, 10) || quantity);
+        transaction.update(bookRef, {
+          quantity: quantity + 1,
+          totalQuantity: total + 1,
+          status: book.status === 'Unavailable' ? 'Available' : book.status,
+          updatedAt: serverTimestamp()
+        });
+      });
     }
 
     // Modal button: scan into the form that is already open.
