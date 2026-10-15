@@ -1,0 +1,11 @@
+<!doctype html><link rel="stylesheet" href="/css/reset.css"><link rel="stylesheet" href="/css/variables.css"><link rel="stylesheet" href="/css/global.css"><link rel="stylesheet" href="/css/pages/admin.css"><body><button id=go>go</button>
+<script type="module">
+import { scanIsbnsContinuously } from '/js/barcode-scanner.js';
+const c=document.createElement('canvas');c.width=64;c.height=48;c.getContext('2d').fillRect(0,0,64,48);
+setInterval(()=>{const x=c.getContext('2d');x.fillStyle='hsl('+(Date.now()/10%360)+',50%,50%)';x.fillRect(0,0,64,48)},50);navigator.mediaDevices.getUserMedia=async()=>c.captureStream(15);
+// script: A A A (still in view) , gap x3, A again, B, B, gap, bad code
+const seq=[['9780763716349'],['9780763716349'],['9780763716349'],[],[],[],['9780763716349'],['9780393313130'],['9780393313130'],[],[],[],['12345']];
+let i=0;window.BarcodeDetector=class{constructor(){} async detect(){return (seq[i++]||[]).map(rawValue=>({rawValue}))}};
+window.calls=[];
+document.getElementById('go').onclick=async()=>{window.result=await scanIsbnsContinuously(async isbn=>{calls.push(isbn);await new Promise(r=>setTimeout(r,100));return {kind:isbn.endsWith('9')?'added':'copy',title:'T'+isbn.slice(-4),message:'ok'}});window.finished=true};
+</script>
