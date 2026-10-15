@@ -6,7 +6,7 @@
    normalizeIsbn()   Strips hyphens/spaces; returns '' when not a valid ISBN.
    toIsbn13()        Converts a valid ISBN-10 or ISBN-13 to ISBN-13.
    isbnMatches()     True when two ISBN strings refer to the same book.
-   lookupIsbn()      Open Library lookup → { title, author, edition } | null.
+   lookupIsbn()      Open Library, then Google Books, lookup → { title, author, edition } | null.
 
    Uses the native BarcodeDetector when available, otherwise lazy-loads ZXing.
    Camera access requires HTTPS (Firebase Hosting) or localhost.
@@ -46,25 +46,42 @@ export function isbnMatches(a, b) {
   return Boolean(x) && x === toIsbn13(b);
 }
 
-/* ---------- Open Library lookup ---------- */
+/* ---------- Book info lookup (Open Library, then Google Books) ---------- */
+
+async function lookupOpenLibrary(isbn13) {
+  const key = `ISBN:${isbn13}`;
+  const res = await fetch(`https://openlibrary.org/api/books?bibkeys=${key}&format=json&jscmd=data`);
+  if (!res.ok) return null;
+  const entry = (await res.json())[key];
+  if (!entry?.title) return null;
+  return {
+    title: [entry.title, entry.subtitle].filter(Boolean).join(': '),
+    author: (entry.authors || []).map((a) => a.name).join(', ')
+  };
+}
+
+async function lookupGoogleBooks(isbn13) {
+  const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn13}&maxResults=1`);
+  if (!res.ok) return null;
+  const info = (await res.json()).items?.[0]?.volumeInfo;
+  if (!info?.title) return null;
+  return {
+    title: [info.title, info.subtitle].filter(Boolean).join(': '),
+    author: (info.authors || []).join(', ')
+  };
+}
 
 export async function lookupIsbn(isbn) {
-  const key = `ISBN:${toIsbn13(isbn)}`;
-  try {
-    const res = await fetch(`https://openlibrary.org/api/books?bibkeys=${key}&format=json&jscmd=data`);
-    if (!res.ok) return null;
-    const entry = (await res.json())[key];
-    if (!entry) return null;
-    const title = [entry.title, entry.subtitle].filter(Boolean).join(': ');
-    return {
-      title,
-      author: (entry.authors || []).map((a) => a.name).join(', '),
-      edition: ''
-    };
-  } catch (error) {
-    console.warn('ISBN lookup failed:', error);
-    return null;
+  const isbn13 = toIsbn13(isbn);
+  for (const lookup of [lookupOpenLibrary, lookupGoogleBooks]) {
+    try {
+      const info = await lookup(isbn13);
+      if (info) return { ...info, edition: '' };
+    } catch (error) {
+      console.warn(`${lookup.name} failed:`, error);
+    }
   }
+  return null;
 }
 
 /* ---------- Scanner overlay ---------- */
