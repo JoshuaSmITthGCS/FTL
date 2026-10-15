@@ -247,7 +247,7 @@
 
   <script type="module">
     import { toast } from './js/main.js';
-    import { scanIsbn, lookupIsbn, isbnMatches } from './js/barcode-scanner.js';
+    import { scanIsbn, lookupIsbn, isbnMatches, suggestSubject } from './js/barcode-scanner.js';
     import { db, auth, firebaseProjectId } from './js/firebase-config.js';
     import {
       signInWithEmailAndPassword,
@@ -757,7 +757,15 @@
       const authorInput = form.querySelector('[name="author"]');
       if (!titleInput.value.trim()) titleInput.value = info.title;
       if (!authorInput.value.trim()) authorInput.value = info.author;
-      toast(`Found "${info.title}". Check the details, then save.`);
+
+      // Only suggest a subject while it's still unset, so a manual choice is never overwritten.
+      const subjectSelect = form.querySelector('[data-book-subject-select]');
+      const suggested = !getSelectedSubject() || getSelectedSubject() === 'Uncategorized'
+        ? suggestSubject(info.subjects, [...subjectSelect.options].map((option) => option.value).filter((value) => value !== CUSTOM_SUBJECT_VALUE))
+        : '';
+      if (suggested) setSubjectSelection(suggested);
+
+      toast(`Found "${info.title}"${suggested ? ` (subject: ${suggested})` : ''}. Check the details, then save.`);
     }
 
     // Header button: scan a book, then edit it if it exists or start a new entry if not.
