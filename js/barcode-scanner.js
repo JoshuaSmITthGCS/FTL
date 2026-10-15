@@ -6,7 +6,9 @@
    normalizeIsbn()   Strips hyphens/spaces; returns '' when not a valid ISBN.
    toIsbn13()        Converts a valid ISBN-10 or ISBN-13 to ISBN-13.
    isbnMatches()     True when two ISBN strings refer to the same book.
-   lookupIsbn()      Open Library, then Google Books, lookup → { title, author, edition } | null.
+   lookupIsbn()      Open Library, then Google Books, lookup → { title, author, edition, subjects } | null.
+   toIsbn10()        ISBN-10 for a 978-prefixed ISBN; used so a book is findable by either number.
+   suggestSubject()  Maps lookup subject tags onto the library's subject list.
 
    Uses the native BarcodeDetector when available, otherwise lazy-loads ZXing.
    Camera access requires HTTPS (Firebase Hosting) or localhost.
@@ -41,6 +43,17 @@ export function toIsbn13(value) {
   return `${base}${(10 - (sum % 10)) % 10}`;
 }
 
+// ISBN-10 exists only for 978-prefixed ISBN-13s; returns '' otherwise.
+export function toIsbn10(value) {
+  const isbn = toIsbn13(value);
+  if (!isbn.startsWith('978')) return '';
+  const body = isbn.slice(3, 12);
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += Number(body[i]) * (10 - i);
+  const check = (11 - (sum % 11)) % 11;
+  return `${body}${check === 10 ? 'X' : check}`;
+}
+
 export function isbnMatches(a, b) {
   const x = toIsbn13(a);
   return Boolean(x) && x === toIsbn13(b);
@@ -56,7 +69,8 @@ async function lookupOpenLibrary(isbn13) {
   if (!entry?.title) return null;
   return {
     title: [entry.title, entry.subtitle].filter(Boolean).join(': '),
-    author: (entry.authors || []).map((a) => a.name).join(', ')
+    author: (entry.authors || []).map((a) => a.name).join(', '),
+    subjects: (entry.subjects || []).map((subject) => subject.name)
   };
 }
 
@@ -67,7 +81,8 @@ async function lookupGoogleBooks(isbn13) {
   if (!info?.title) return null;
   return {
     title: [info.title, info.subtitle].filter(Boolean).join(': '),
-    author: (info.authors || []).join(', ')
+    author: (info.authors || []).join(', '),
+    subjects: info.categories || []
   };
 }
 
@@ -82,6 +97,34 @@ export async function lookupIsbn(isbn) {
     }
   }
   return null;
+}
+
+/* ---------- Subject suggestion ---------- */
+
+// Keyword rules for the library's standard subjects, checked in order.
+const SUBJECT_RULES = [
+  ['Language', /\b(language|languages|spanish|french|chinese|german|japanese|italian|latin|arabic|portuguese|russian|esl|linguistics|grammar)\b/i],
+  ['Business', /\b(business|economics|finance|accounting|marketing|management|entrepreneur\w*)\b/i],
+  ['History', /\b(history|historical|civilization|war|revolution)\b/i],
+  ['English', /\b(english|literature|literary|composition|rhetoric|poetry|writing)\b/i],
+  ['Entertainment', /\b(film|movies?|music|theat(er|re)|drama|art|photography|performing arts)\b/i],
+  ['Humanities', /\b(philosophy|ethics|religion|sociology|anthropology|psychology|political science|social science|humanities)\b/i]
+];
+
+// Returns one of `knownSubjects` (case-preserved) or '' when nothing fits.
+export function suggestSubject(tags, knownSubjects) {
+  const text = (tags || []).join(' | ');
+  if (!text) return '';
+  const known = new Map(knownSubjects.map((name) => [name.toLowerCase(), name]));
+
+  // An existing subject named in the tags wins, e.g. a custom "Computer Science".
+  for (const [lower, name] of known) {
+    if (lower !== 'uncategorized' && text.toLowerCase().includes(lower)) return name;
+  }
+  for (const [name, pattern] of SUBJECT_RULES) {
+    if (pattern.test(text) && known.has(name.toLowerCase())) return known.get(name.toLowerCase());
+  }
+  return '';
 }
 
 /* ---------- Scanner overlay ---------- */

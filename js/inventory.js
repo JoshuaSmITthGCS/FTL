@@ -9,6 +9,7 @@
 
 import { db } from './firebase-config.js';
 import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { toIsbn10, toIsbn13 } from './barcode-scanner.js';
 
 function normalizeBook(docSnap) {
   const data = docSnap.data();
@@ -84,14 +85,22 @@ export function groupBySubject(books) {
   return map;
 }
 
+// Every ISBN form a patron might type: as stored, the 10- and 13-digit versions, with and without hyphens.
+// The alternate form is derived here, not stored, so older books are searchable by both numbers too.
+function isbnSearchText(isbn) {
+  if (!isbn) return '';
+  const forms = [isbn, toIsbn10(isbn), toIsbn13(isbn)].filter(Boolean);
+  return [...forms, ...forms.map((form) => form.replace(/[\s-]/g, ''))].join(' ');
+}
+
 export function filterBooks(books, { search = '', subjects = [], availableOnly = false } = {}) {
   const q = search.trim().toLowerCase();
   return books.filter(b => {
     if (availableOnly && (b.status !== 'Available' || b.quantity < 1)) return false;
     if (subjects.length && !subjects.includes(b.subject)) return false;
     if (q) {
-      const hay = `${b.title} ${b.isbn} ${b.author || ''} ${b.edition || ''}`.toLowerCase();
-      if (!hay.includes(q)) return false;
+      const hay = `${b.title} ${isbnSearchText(b.isbn)} ${b.author || ''} ${b.edition || ''}`.toLowerCase();
+      if (!hay.includes(q) && !hay.includes(q.replace(/[\s-]/g, ''))) return false;
     }
     return true;
   });
