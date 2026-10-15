@@ -220,9 +220,9 @@
   <div class="modal-backdrop" data-checkout-modal>
     <div class="modal">
       <h3>Check Out Books</h3>
-      <p class="modal__hint">Scan the books going to one person, enter their details, and submit. Each copy leaves the available inventory and is added to Copies given with today's date.</p>
+      <p class="modal__hint">Enter the person's details and submit. Each copy leaves the available inventory and is added to Copies given with today's date. Scan more books to add them to this checkout.</p>
       <div class="checkout-cart" data-checkout-cart></div>
-      <button type="button" class="btn btn--ghost checkout-scan" data-checkout-scan>Scan books</button>
+      <button type="button" class="btn btn--ghost checkout-scan" data-checkout-scan>Scan another book</button>
       <form data-checkout-form>
         <div class="modal__field">
           <label for="checkout-name">Name *</label>
@@ -356,8 +356,8 @@
       document.querySelector('[data-add-book-btn]').addEventListener('click', openAddBookModal);
       document.querySelector('[data-scan-book-btn]').addEventListener('click', handleScanBook);
       document.querySelector('[data-bulk-scan-btn]').addEventListener('click', handleBulkScan);
-      document.querySelector('[data-checkout-btn]').addEventListener('click', openCheckoutModal);
-      document.querySelector('[data-checkout-scan]').addEventListener('click', handleCheckoutScan);
+      document.querySelector('[data-checkout-btn]').addEventListener('click', startCheckout);
+      document.querySelector('[data-checkout-scan]').addEventListener('click', () => handleCheckoutScan());
       document.querySelector('[data-checkout-cancel]').addEventListener('click', closeCheckoutModal);
       document.querySelector('[data-checkout-form]').addEventListener('submit', handleCheckoutSubmit);
       document.querySelector('[data-checkout-cart]').addEventListener('click', handleCheckoutCartClick);
@@ -917,11 +917,18 @@
       return [...checkoutCart.values()].reduce((sum, count) => sum + count, 0);
     }
 
-    function openCheckoutModal() {
+    // The scanner opens first. The first available book scanned closes it and opens the
+    // name/email form with that book already listed; more books can be scanned from the form.
+    async function startCheckout() {
       checkoutCart = new Map();
       document.querySelector('[data-checkout-form]').reset();
       renderCheckoutCart();
+
+      await handleCheckoutScan({ stopOnFirst: true });
+      if (!checkoutCart.size) return;
+
       document.querySelector('[data-checkout-modal]').classList.add('show');
+      document.querySelector('#checkout-name').focus();
     }
 
     function closeCheckoutModal() {
@@ -987,7 +994,7 @@
       renderCheckoutCart();
     }
 
-    async function handleCheckoutScan() {
+    async function handleCheckoutScan({ stopOnFirst = false } = {}) {
       await scanIsbnsContinuously(async (isbn) => {
         const matches = allBooks.filter((book) => isbnMatches(book.isbn, isbn));
         if (!matches.length) {
@@ -1009,7 +1016,7 @@
 
         checkoutCart.set(book.docId, count + 1);
         renderCheckoutCart();
-        return { kind: 'copy', title: book.title, message: `In list (${count + 1})` };
+        return { kind: 'copy', title: book.title, message: `In list (${count + 1})`, stop: stopOnFirst };
       });
     }
 
