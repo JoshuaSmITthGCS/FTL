@@ -107,6 +107,7 @@
             >
               Collapse
             </button>
+            <button type="button" class="btn btn--ghost" data-scan-book-btn>Scan Book</button>
             <button class="btn btn--accent" data-add-book-btn>+ Add Book</button>
           </div>
         </div>
@@ -163,7 +164,11 @@
         </div>
         <div class="modal__field">
           <label for="book-isbn">ISBN</label>
-          <input type="text" id="book-isbn" name="isbn" />
+          <div class="modal__inline">
+            <input type="text" id="book-isbn" name="isbn" inputmode="numeric" />
+            <button type="button" class="btn btn--ghost" data-scan-isbn-btn>Scan</button>
+          </div>
+          <p class="modal__hint">Scan the barcode on the back cover to fill in the ISBN, title, and author.</p>
         </div>
         <div class="modal__field">
           <label for="book-author">Author</label>
@@ -242,6 +247,7 @@
 
   <script type="module">
     import { toast } from './js/main.js';
+    import { scanIsbn, lookupIsbn, isbnMatches } from './js/barcode-scanner.js';
     import { db, auth, firebaseProjectId } from './js/firebase-config.js';
     import {
       signInWithEmailAndPassword,
@@ -316,6 +322,8 @@
       document.querySelector('[data-login-form]').addEventListener('submit', handleLogin);
       document.querySelector('[data-logout]').addEventListener('click', handleLogout);
       document.querySelector('[data-add-book-btn]').addEventListener('click', openAddBookModal);
+      document.querySelector('[data-scan-book-btn]').addEventListener('click', handleScanBook);
+      document.querySelector('[data-scan-isbn-btn]').addEventListener('click', handleScanIntoForm);
       document.querySelector('[data-books-toggle]').addEventListener('click', toggleBooksSection);
       document.querySelector('[data-book-modal-cancel]').addEventListener('click', closeBookModal);
       document.querySelector('[data-book-subject-select]').addEventListener('change', handleSubjectSelectionChange);
@@ -728,6 +736,55 @@
 
       setSubjectSelection(book.subject || 'Uncategorized');
       document.querySelector('[data-book-modal]').classList.add('show');
+    }
+
+    function findBookByIsbn(isbn, exceptDocId = null) {
+      return allBooks.find((book) => book.docId !== exceptDocId && isbnMatches(book.isbn, isbn));
+    }
+
+    // Fills ISBN, then title/author from Open Library, without overwriting what's already typed.
+    async function fillFormFromIsbn(isbn) {
+      const form = document.querySelector('[data-book-form]');
+      form.querySelector('[name="isbn"]').value = isbn;
+
+      const info = await lookupIsbn(isbn);
+      if (!info?.title) {
+        toast('ISBN filled in. No book details found, so enter the title manually.');
+        form.querySelector('[name="title"]').focus();
+        return;
+      }
+      const titleInput = form.querySelector('[name="title"]');
+      const authorInput = form.querySelector('[name="author"]');
+      if (!titleInput.value.trim()) titleInput.value = info.title;
+      if (!authorInput.value.trim()) authorInput.value = info.author;
+      toast(`Found "${info.title}". Check the details, then save.`);
+    }
+
+    // Header button: scan a book, then edit it if it exists or start a new entry if not.
+    async function handleScanBook() {
+      const isbn = await scanIsbn();
+      if (!isbn) return;
+
+      const existing = findBookByIsbn(isbn);
+      if (existing) {
+        toast(`"${existing.title}" is already in inventory. Opening it.`);
+        openEditBookModal(existing.docId);
+        return;
+      }
+      openAddBookModal();
+      await fillFormFromIsbn(isbn);
+    }
+
+    // Modal button: scan into the form that is already open.
+    async function handleScanIntoForm() {
+      const isbn = await scanIsbn();
+      if (!isbn) return;
+
+      const duplicate = findBookByIsbn(isbn, editingBookDocId);
+      if (duplicate) {
+        toast(`"${duplicate.title}" already has this ISBN. Edit that entry to change its copies.`);
+      }
+      await fillFormFromIsbn(isbn);
     }
 
     function closeBookModal() {
