@@ -27,9 +27,10 @@ service cloud.firestore {
       allow create, delete: if isAdmin();
     }
 
-    // Requests collection - public create, admin-only read/update
+    // Requests collection - public create (pending only), admin-only read/update.
+    // Admins may also create records directly, used by in-person checkout to log copies as given.
     match /requests/{requestId} {
-      allow create: if request.resource.data.status == 'pending';
+      allow create: if isAdmin() || request.resource.data.status == 'pending';
       allow read, update, delete: if isAdmin();
     }
 
