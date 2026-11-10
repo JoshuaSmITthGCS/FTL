@@ -1,0 +1,10 @@
+@import './css/reset.css';
+@import './css/variables.css';
+@import './css/global.css';
+@import './css/pages/home.css';
+@import './css/pages/catalog.css';
+@import './css/pages/admin.css';
+
+/* Pages share one stylesheet in the SPA; keep the one rule the pages disagreed on scoped. */
+.catalog-page .modal h3 { margin-bottom: var(--space-2); }
+.admin-page .modal h3 { margin-bottom: var(--space-4); }

@@ -158,7 +158,7 @@ async function createDetector() {
   }
 
   const { MultiFormatReader, BarcodeFormat, DecodeHintType, HTMLCanvasElementLuminanceSource, BinaryBitmap, HybridBinarizer } =
-    await import(ZXING_URL);
+    await import(/* @vite-ignore */ ZXING_URL);
   const reader = new MultiFormatReader();
   reader.setHints(new Map([[DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A]]]));
   const canvas = document.createElement('canvas');

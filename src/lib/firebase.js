@@ -11,9 +11,9 @@
    Get config from: Firebase Console → Project Settings → Web App
    ============================================================ */
 
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { getAuth } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { initializeApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 
 export const firebaseConfig = {
   apiKey: "AIzaSyAq9fp6GOI3jCH7Umm3eJsfSFKaLtvxwdM",

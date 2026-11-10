@@ -7,8 +7,8 @@
    Status values: Available | Pending | Unavailable
    ============================================================ */
 
-import { db } from './firebase-config.js';
-import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { db } from './firebase.js';
+import { collection, getDocs } from 'firebase/firestore';
 import { toIsbn10, toIsbn13 } from './barcode-scanner.js';
 
 function normalizeBook(docSnap) {
@@ -58,7 +58,7 @@ export async function fetchInventory() {
 
   // Fallback: seed inventory
   try {
-    const res = await fetch('data/seed-inventory.json');
+    const res = await fetch('/data/seed-inventory.json');
     const books = (await res.json())
       .map((book) => ({
         ...book,
@@ -115,4 +115,10 @@ export function sortBooks(books, key, direction = 'asc') {
     return 0;
   });
   return direction === 'desc' ? sorted.reverse() : sorted;
+}
+
+export function formatEdition(edition) {
+  const value = String(edition || '').trim();
+  if (!value) return 'Not listed';
+  return /edition|\bed\.?$/i.test(value) ? value : `${value} edition`;
 }
