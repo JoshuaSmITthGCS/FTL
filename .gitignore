@@ -22,3 +22,6 @@ npm-debug.log*
 
 # Firebase cache
 .firebase/
+
+# Build output
+dist/
