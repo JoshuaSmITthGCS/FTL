@@ -4,6 +4,9 @@
 
 [build.environment]
   NODE_VERSION = "22"
+  # The Firebase web apiKey is public by design (Firestore rules and Auth protect the data),
+  # so Netlify's secrets scanner must not fail the build over it.
+  SECRETS_SCAN_SMART_DETECTION_OMIT_VALUES = "AIzaSyAq9fp6GOI3jCH7Umm3eJsfSFKaLtvxwdM"
 
 # Single-page app: serve index.html for every route (/catalog, /admin, ...).
 # Netlify form submissions are handled before this rule, so POSTs to / still work.
