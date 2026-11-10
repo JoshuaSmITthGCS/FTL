@@ -11,6 +11,21 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&amp;family=Inter+Tight:wght@400;500;600&amp;display=swap" rel="stylesheet" />
 </head>
 <body>
+  <!-- Static copy of the request form so Netlify detects it at build time.
+       The live form is rendered by React (src/pages/CatalogPage.jsx) and posts the same fields. -->
+  <form name="book-request" data-netlify="true" hidden>
+    <input type="hidden" name="form-name" value="book-request" />
+    <input name="bookTitle" />
+    <input name="bookIsbn" />
+    <input name="bookAuthor" />
+    <input name="bookEdition" />
+    <input name="bookSubject" />
+    <input name="course" />
+    <input name="name" />
+    <input type="email" name="email" />
+    <textarea name="message"></textarea>
+    <input name="availabilityRating" />
+  </form>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
 </body>
